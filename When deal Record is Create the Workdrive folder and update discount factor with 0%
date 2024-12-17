@@ -1,0 +1,48 @@
+# When a deal record is created, the Discount Factor Percentage field is set to 0%. 
+# Additionally, if the state is Illinois, an email template specific to Illinois is sent on the Customer Email Address.
+
+void automation.Admin_Update_Discount_Factor_Percentage_Field_Workdrive_Folder(Int deal_id)
+{
+# Set the default value 0 in Discount Factor Percentage field while creating a deal record
+deal_details = zoho.crm.getRecordById("Deals",deal_id);
+discount_factor_percentage = deal_details.get("Discount_Factor_Percentage");
+info discount_factor_percentage;
+deal_map = Map();
+deal_map.put("Discount_Factor_Percentage","0");
+update = zoho.crm.updateRecord("Deals",deal_id,deal_map);
+info update;
+# When a deal is created, a folder is automatically generated in WorkDrive
+deal_name = deal_details.get("Deal_Name");
+info deal_name;
+state_project = deal_details.getJSON("State_Project");
+customer_email = ifnull(deal_details.getJSON("Customer_Email"),"");
+create_sub_folder = zoho.workdrive.createFolder(deal_name,"cdjzvb2c80e9df59d499599b8519fc15770ab","work_drive");
+subfolder_id = create_sub_folder.get("data").getJSON("id");
+//info subfolder_id;
+subfolder_url = "https://workdrive.zoho.com/home/cdjzvc1cec9cc880f453d91284578c122aea2/privatespace/folders/" + subfolder_id;
+//info subfolder_url;
+# Update the WorkDrive URL in the CRM Deal module under the field WorkDrive Folder URL 
+deal_map = Map();
+deal_map.put("WorkDrive_Folder_URL",subfolder_url);
+# If the project state is Illinois, send the email template with an attachment specific to the state of Illinois.
+if(state_project.contains("IL"))
+{
+	mailData = {"data":{{"from":{"email":"noreply@suncheck.com"},"to":{{"email":customer_email}},"template":{"id":"6288360000008758123"},"org_email":True}}};
+	//info mailData;
+	requestHeaders = Map();
+	requestHeaders.put("Content-Type","application/json");
+	mailUrl = " https://www.zohoapis.com/crm/v4/Deals/" + deal_id + "/actions/send_mail";
+	body = mailData.toString();
+	mailRequest = invokeurl
+	[
+		url :mailUrl
+		type :POST
+		parameters:body
+		headers:requestHeaders
+		connection:"email_template"
+	];
+	info mailRequest;
+}
+update_deal = zoho.crm.updateRecord("Deals",deal_id,deal_map,{"trigger":{"workflow"}});
+info update_deal;
+}
