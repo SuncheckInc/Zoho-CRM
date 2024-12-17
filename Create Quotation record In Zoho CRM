@@ -1,0 +1,150 @@
+// When the Additional Products is modify the any value 
+// 	System Payback in Years IS EMPTY
+//  System Total Federal Tax Credit IS EMPTY
+//	Additional Product IS NOT EMPTY
+// Then we are creating a record in quotation
+
+void automation.Admin_Create_record_in_Quotedot_module_and_Update_Stage_4_OQG(Int deal_id)
+{
+    // Fetch Deal details using the given deal_id
+    deal_details = zoho.crm.getRecordById("Deals", deal_id);
+    deal_name = deal_details.get("Deal_Name");
+    total_no_of_modules = deal_details.get("Total_No_Of_Modules");
+    system_year_1_production = deal_details.get("System_Year_1_Production");
+    utility_rate = deal_details.get("Utility_Rate");
+    additional_products = deal_details.get("Additional_Product");
+    system_total_federal_tax_credit = deal_details.getJSON("System_Total_Federal_Tax_Credit");
+    state = deal_details.get("State_Project");
+    discount_factor_percentage = deal_details.get("Discount_Factor_Percentage");
+    deal_created_type = deal_details.get("Deal_Created_Type");
+
+    // Proceed only if the deal is created by Automation
+    if (deal_created_type == "Automation")
+    {
+        // Search State and Pricing Table for matching state project
+        search_record = zoho.crm.searchRecords("State_and_Pricing_Table", "(Name:equals:" + state + ")");
+        
+        // If no records found, use 'Other States' fallback
+        if (search_record.size() == 0)
+        {
+            search_record = zoho.crm.searchRecords("State_and_Pricing_Table", "(Name:equals:Other States)");
+        }
+
+        // Validate if records are found in State and Pricing Table
+        if (search_record.size() > 0)
+        {
+            // Fetch necessary pricing and module assumptions from State and Pricing Table
+            per_panel = search_record.getJSON("Base_Price_Per_Panel");
+            solar_insure_price_per_panel = search_record.getJSON("Solar_Insure_Price_per_panel");
+            backup_price = search_record.getJSON("Backup_Price");
+            module_wattage_assumption = search_record.getJSON("Module_Wattage_Assumption");
+            module_made_in_U_S_A = search_record.getJSON("Module_Made_in_U_S_A");
+            
+            // Calculate base system cost and other required amounts
+            formula = per_panel * total_no_of_modules;
+            solarinsure_update = solar_insure_price_per_panel * total_no_of_modules;
+            update_suncheck_amount = total_no_of_modules * module_wattage_assumption * 1.1;
+            update_module_made_in_U_S_A = module_made_in_U_S_A * total_no_of_modules;
+            update_pv_dc_system_size = module_wattage_assumption * total_no_of_modules;
+            solar_installation_cost = module_wattage_assumption * total_no_of_modules * 3.75;
+
+            // Prepare data map for creating a quote record
+            quote_map = Map();
+            quote_map.put("Name", deal_name);
+            quote_map.put("Utility_Rate", utility_rate);
+            quote_map.put("Additional_Product", additional_products.toList());
+            quote_map.put("State", state);
+            quote_map.put("PV_DC_System_Size_W", update_pv_dc_system_size);
+            quote_map.put("Solar_Installation_Cost", solar_installation_cost);
+            quote_map.put("Discount_Factor", discount_factor_percentage);
+            quote_map.put("Total_of_Array", total_no_of_modules);
+            quote_map.put("System_Year_1_Production", system_year_1_production);
+            quote_map.put("Base_System_Cost", formula);
+            quote_map.put("Projects", deal_id);
+            quote_map.put("Quotation_Status", "Active");
+
+            // Add Solar Insure and Backup costs based on additional products
+            if (additional_products.contains("Solar Insure"))
+            {
+                quote_map.put("SolarInsure", solarinsure_update);
+            }
+            else
+            {
+                quote_map.put("SolarInsure", 0);
+            }
+
+            if (additional_products.contains("Backup"))
+            {
+                quote_map.put("Backup", backup_price);
+            }
+            else
+            {
+                quote_map.put("Backup", 0);
+            }
+
+            // Add SunCheck and Module Made in USA amounts
+            quote_map.put("SunCheck_Amount", update_suncheck_amount);
+            if (additional_products == "Made in USA Panels")
+            {
+                quote_map.put("Module_Made_in_USA", update_module_made_in_U_S_A);
+            }
+
+            // Create the Quote record in CRM
+            create_quotes = zoho.crm.createRecord("Quotes1", quote_map);
+            quote_id = create_quotes.get("id");
+
+            // Retrieve the newly created Quote details
+            created_quote_details = zoho.crm.getRecordById("Quotes1", quote_id);
+            base_system_cost = created_quote_details.get("Base_System_Cost");
+            module_made_in_USA = ifnull(created_quote_details.getJSON("Module_Made_in_USA"), 0);
+            solar_insure = ifnull(created_quote_details.getJSON("SolarInsure"), 0);
+            backup = ifnull(created_quote_details.getJSON("Backup"), 0);
+            suncheck_amount = created_quote_details.getJSON("SunCheck_Amount");
+            discount = ifnull(created_quote_details.getJSON("Discount_Factor"), 0);
+            solar_installation_cost = created_quote_details.getJSON("Solar_Installation_Cost");
+
+            // Calculate Total System Cost and Tax Credit
+            discount_into_number = discount / 100;
+            update_total_system_cost_formula = (base_system_cost + module_made_in_USA + solar_insure + backup) * (1 - discount_into_number);
+            update_tax_credit = update_total_system_cost_formula * 0.3;
+
+            // Calculate System Payback in Years
+            if (system_year_1_production != 0 && utility_rate != 0)
+            {
+                update_system_payback_in_years = ((base_system_cost + module_made_in_USA + solar_insure + backup) * 0.7 - suncheck_amount) / (system_year_1_production * utility_rate);
+            }
+
+            if (update_system_payback_in_years != null)
+            {
+                update_system_payback_in_years_round = update_system_payback_in_years.round(2);
+            }
+
+            // Update Quote record with calculated values
+            quote_map = Map();
+            quote_map.put("Total_System_Cost", update_total_system_cost_formula);
+            quote_map.put("Tax_Credit", update_tax_credit);
+            quote_map.put("System_Payback_in_Years", update_system_payback_in_years_round);
+            update_quote = zoho.crm.updateRecord("Quotes1", quote_id, quote_map, {"trigger": {"workflow"}});
+
+            // Calculate System Net Cost and Battery Installation Cost
+            system_net_cost = update_total_system_cost_formula - (suncheck_amount + update_tax_credit);
+            formula_battery_installation_cost = update_total_system_cost_formula - solar_installation_cost;
+
+            // Update Quote record with Net Cost and Battery Installation Cost
+            quote_map = Map();
+            quote_map.put("System_Net_Cost", system_net_cost);
+            quote_map.put("Battery_Installation_Cost", formula_battery_installation_cost);
+            update_quotes = zoho.crm.updateRecord("Quotes1", quote_id, quote_map);
+
+            // Update Deal record with Quote details and calculated values
+            deal_map = Map();
+            deal_map.put("Quotes_Name", quote_id);
+            deal_map.put("System_Total_Federal_Tax_Credit", update_tax_credit);
+            deal_map.put("System_Total_Eligible_SunCheck", suncheck_amount);
+            deal_map.put("System_Total_Cost", system_net_cost);
+            deal_map.put("System_Payback_in_Years", update_system_payback_in_years_round);
+            deal_map.put("System_Size", update_pv_dc_system_size);
+            update_deal = zoho.crm.updateRecord("Deals", deal_id, deal_map, {"trigger": {"workflow"}});
+        }
+    }
+}
