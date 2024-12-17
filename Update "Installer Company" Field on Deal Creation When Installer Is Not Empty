@@ -1,0 +1,39 @@
+# On Creation Of a Deal record if installer is not empty
+/**
+ * @description Updates the "Installer's Company" field in the Deals module 
+ * based on the Installer associated with the deal.
+ *
+ * @param {Int} deal_id - The ID of the deal record to be updated.
+ * 
+ * @returns {void}
+ */
+void automation.Admin_Update_Installer_Company(Int deal_id)
+{
+    // Step 1: Initialize an empty map to store the fields that need updating
+    deal_map = Map();
+
+    // Step 2: Fetch the deal record details using the provided deal ID
+    deal_details = zoho.crm.getRecordById("Deals", deal_id);
+
+    // Step 3: Retrieve the "Installer" field value (ID of the installer record) from the deal
+    installer_id = deal_details.get("Installer").getJSON("id");
+
+    // Step 4: Fetch the installer's details using the retrieved installer ID
+    installers_details = zoho.crm.getRecordById("Installer", installer_id);
+
+    // Step 5: Retrieve the "Installer_Company_Name" field from the installer's details
+    installers_company = installers_details.get("Installer_Company_Name");
+
+    // Step 6: Check if the installer's company information is not null
+    if (installers_company != null)
+    {
+        // Step 7: Extract the company ID from the "Installer_Company_Name" field
+        installer_company_id = installers_company.getJSON("id");
+
+        // Step 8: Add the Installers_Company field and value to the map for updating the deal
+        deal_map.put("Installers_Company", installer_company_id);
+    }
+
+    // Step 9: Update the deal record with the new Installers_Company field value
+    update_deal = zoho.crm.updateRecord("Deals", deal_id, deal_map);
+}
