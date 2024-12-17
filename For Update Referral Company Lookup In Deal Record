@@ -1,0 +1,35 @@
+/**
+ * @description This function updates the "Referral Company" and "Owner" fields 
+ * in a deal record based on the corresponding referral record.
+ * 
+ * @param {Int} deal_id - The ID of the deal record to be updated.
+ * 
+ * @returns {void}
+ */
+void automation.Admin_Link_Referral_Company_Field(Int deal_id)
+{
+    // Step 1: Fetch the deal record details using the provided deal ID
+    deal_details = zoho.crm.getRecordById("Deals", deal_id);
+
+    // Step 2: Retrieve the "Referred_by" field value (ID of the referral record)
+    referral_by_id = deal_details.get("Referred_by").getJSON("id");
+
+    // Step 3: Fetch the referral record details using the referral ID
+    referral_details = zoho.crm.getRecordById("Referrals", referral_by_id);
+
+    // Step 4: Extract the Owner ID from the referral record
+    owner = referral_details.get("Owner").get("id");
+
+    // Step 5: Retrieve the Referral Company ID from the referral details
+    referral_company_id = referral_details.get("Referral_Companies_Name").getJSON("id");
+
+    // Step 6: Prepare a map with fields to be updated in the deal record
+    deal_map = Map();
+   // Update the Referral Company field
+    deal_map.put("Referral_Company", referral_company_id); 
+    // Update the Owner field
+    deal_map.put("Owner", owner);
+
+    // Step 7: Update the deal record with the new Referral Company and Owner fields
+    update_deal = zoho.crm.updateRecord("Deals", deal_id, deal_map);
+}
