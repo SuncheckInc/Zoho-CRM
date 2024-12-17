@@ -1,0 +1,62 @@
+/**
+ * @description This function creates a record in Zoho Creator using deal details from Zoho CRM.
+ *              It also updates the "Creator_ID" field in the Deals module after record creation.
+ *
+ * @param {Int} id - The ID of the deal record to fetch and process.
+ *
+ * @returns {void}
+ */
+void automation.createrec_increator(Int id)
+{
+    // Step 1: Fetch the deal record from Zoho CRM using the given deal ID
+    rec = zoho.crm.getRecordById("Deals", id);
+
+    // Step 2: Retrieve required fields from the deal record
+    deal_name = rec.getJSON("Deal_Name"); // Fetch the deal name
+    phone = rec.getJSON("Phone_Number"); // Fetch the phone number
+    email = rec.getJSON("Customer_Email"); // Fetch the customer email
+
+    // Fetch and combine first and last name, using a default value if null
+    customer_first_name = ifnull(rec.getJSON("Customer_First_Name"), "");
+    customer_last_name = ifnull(rec.getJSON("Customer_Last_Name"), "");
+    customer_name = customer_first_name + " " + customer_last_name; // Combine names
+
+    // Step 3: Create a parameter map to store data to be sent to Zoho Creator
+    param = Map();
+    param.put("Deal_Name", deal_name); // Add deal name
+    param.put("Phone_Number1", phone); // Add phone number
+    param.put("Email", email); // Add customer email
+    param.put("Stage", rec.getJSON("Stage")); // Add deal stage
+
+    // Add quiz completion timestamps after formatting to required date-time format
+    param.put("Quiz_1_Complition", rec.getJSON("First_Quiz_Knowledge_Completion_TimeStamp").toString("dd-MMM-yyyy HH:mm:ss"));
+    param.put("Quiz_2_Completion_Time_Stamp", rec.getJSON("Second_Quiz_Data_Collection_TimeStamp").toString("dd-MMM-yyyy HH:mm:ss"));
+    param.put("Quiz_3_Completion_Time_Stamp", rec.getJSON("Third_Quiz_Knowledge_Timestamp").toString("dd-MMM-yyyy HH:mm:ss"));
+    param.put("Quiz_4_Completion_Time_Stamp", rec.getJSON("Fourth_Quiz_Solar_Quote_and_Backup_Addon_Tim").toString("dd-MMM-yyyy HH:mm:ss"));
+
+    param.put("Customer_Name", customer_name); // Add combined customer name
+
+    // Step 4: Create a nested address map to include address-related fields
+    add = Map();
+    add.put("address_line_1", rec.getJSON("Street_Project")); // Street
+    add.put("district_city", rec.getJSON("City_Project")); // City
+    add.put("state_province", rec.getJSON("State_Project")); // State
+    add.put("postal_code", rec.getJSON("Zip_Code_Project")); // Postal Code
+    param.put("Address", add); // Add address to main map
+
+    // Step 5: Add static referral fields for tracking purposes
+    param.put("Referred_By", 4668107000000183009);
+    param.put("Referral_Company_Name", 4668107000000152005);
+
+    // Step 6: Create the record in Zoho Creator using the prepared map
+    blank = Map(); // Placeholder for additional parameters (currently empty)
+    create_rec = zoho.creator.createRecord("suncheck", "zoho-crm", "Deals", param, blank, "creator");
+
+    // Step 7: Retrieve the "Creator_ID" from the newly created record
+    get_id = create_rec.getJSON("Creator_ID");
+
+    // Step 8: Update the "Creator_ID" field back in the Zoho CRM Deals module
+    crm_map = Map();
+    crm_map.put("Creator_ID", get_id);
+    update = zoho.crm.updateRecord("Deals", id, crm_map);
+}
