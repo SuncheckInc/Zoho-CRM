@@ -1,0 +1,126 @@
+# Update the deal stages based on the progress of each section within the deal.  
+# For example, if the section is named "Deal Stage 0 - Pre-Design" and all required fields in that section are complete, then update the stage accordingly.
+# Function is trigger on the "Deal Stage 0 - Pre-Design" section modification
+
+void automation.test_stage(Int deal_id)
+{
+    // Fetch the deal details from the CRM module
+    deal_details = zoho.crm.getRecordById("Deals", deal_id);
+    deal_map = Map();
+
+    // Stage 1 - Validate utility details
+    utility_company = deal_details.get("Utility_Company");
+    annual_consumption_kwh = deal_details.get("Annual_Consumption_KWhs");
+    utility_rate = deal_details.get("Utility_Rate");
+    if (utility_company != null && annual_consumption_kwh != null && utility_rate != null)
+    {
+        // Update stage to "Design A.I. Started" if all utility details are valid
+        deal_map.put("Stage", "Opportunity  Stage 1 - Design A.I. Started");
+        update_deal = zoho.crm.updateRecord("Deals", deal_id, deal_map);
+        info update_deal;
+
+        // Stage 2 - Validate module details
+        total_no_of_modules = deal_details.get("Total_No_Of_Modules");
+        if (total_no_of_modules != null)
+        {
+            // Update stage to "Design Layout Completed" if modules are defined
+            deal_map.put("Stage", "Opportunity  Stage 2 - Design Layout Completed");
+            update_deal = zoho.crm.updateRecord("Deals", deal_id, deal_map);
+            info update_deal;
+
+            // Stage 3 - Validate equipment preferences and configurations
+            equipment_preference = deal_details.get("Equipment_Preference");
+            plan_a_battery_configuration = deal_details.get("Plan_A_Battery_Configuration");
+            plan_b_battery_configuration = deal_details.get("Plan_B_Battery_Configuration");
+            plan_a_equipment_location = deal_details.get("Plan_A_Equipment_Location");
+            plan_b_equipment_location = deal_details.get("Plan_B_Equipment_Location");
+            equipment_location_view = deal_details.get("Equipment_Location_View");
+            if (plan_a_battery_configuration != null && plan_b_battery_configuration != null &&
+                plan_a_equipment_location != null && plan_b_equipment_location != null &&
+                equipment_location_view != null)
+            {
+                // Update stage to "Design Equipment Location Selected"
+                deal_map.put("Stage", "Opportunity Stage 3 - Design Equipment Location Selected");
+                update_deal = zoho.crm.updateRecord("Deals", deal_id, deal_map);
+                info update_deal;
+
+                // Stage 4 - Validate system payback years
+                system_payback_years = deal_details.get("System_Payback_in_Years");
+                if (system_payback_years != null)
+                {
+                    // Update stage to "Quote Generated" and trigger workflow
+                    deal_map.put("Stage", "Opportunity Stage 4 - Quote Generated");
+                    update_deal = zoho.crm.updateRecord("Deals", deal_id, deal_map, {"trigger": {"workflow"}});
+                    info update_deal;
+
+                    // Stage 5 - Validate additional products and financial details
+                    additional_product = deal_details.get("Additional_Product");
+                    system_total_cost = deal_details.get("System_Total_Cost");
+                    federal_tax_credit = deal_details.get("System_Total_Federal_Tax_Credit");
+                    eligible_suncheck = deal_details.get("System_Total_Eligible_SunCheck");
+                    year_1_production = deal_details.get("System_Year_1_Production");
+                    if (additional_product.size() > 0 && system_total_cost != null &&
+                        federal_tax_credit != null && eligible_suncheck != null &&
+                        year_1_production != null)
+                    {
+                        // Update stage to "Quote Presented"
+                        deal_map.put("Stage", "Opportunity Stage 5 - Quote Presented");
+                        update_deal = zoho.crm.updateRecord("Deals", deal_id, deal_map);
+                        info update_deal;
+
+                        // Stage 6 - Validate contract open timestamp
+                        customer_open_agreement_timestamp = deal_details.get("Customer_Open_Agreement_Timestamp");
+                        if (customer_open_agreement_timestamp != null)
+                        {
+                            // Update stage to "Contract Opened"
+                            deal_map.put("Stage", "Opportunity Stage 6 - Contract Opened");
+                            update_deal = zoho.crm.updateRecord("Deals", deal_id, deal_map);
+                            info update_deal;
+
+                            // Stage 7 - Validate contract signed timestamp
+                            customer_complete_agreement_timestamp = deal_details.get("Customer_Complete_Agreement_Timestamp");
+                            if (customer_complete_agreement_timestamp != null)
+                            {
+                                // Update stage to "Contract Signed"
+                                deal_map.put("Stage", "Opportunity Stage 7 - Contract Signed");
+                                update_deal = zoho.crm.updateRecord("Deals", deal_id, deal_map);
+                                info update_deal;
+
+                                // Stage 8 - Validate site survey details
+                                site_capture_ordered_timestamp = deal_details.get("Site_Capture_Ordered_Timestamp");
+                                if (site_capture_ordered_timestamp != null)
+                                {
+                                    // Update stage to "Site Survey Started"
+                                    deal_map.put("Stage", "Opportunity Stage 8 - Site Survey Started");
+                                    update_deal = zoho.crm.updateRecord("Deals", deal_id, deal_map);
+                                    info update_deal;
+
+                                    // Stage 9 - Validate site survey submission
+                                    site_capture_report_file = deal_details.get("Site_Capture_Report_File");
+                                    if (site_capture_report_file != null)
+                                    {
+                                        // Update stage to "Site Survey Submitted"
+                                        deal_map.put("Stage", "Opportunity Stage 9 - Site Survey Submitted");
+                                        update_deal = zoho.crm.updateRecord("Deals", deal_id, deal_map);
+                                        info update_deal;
+
+                                        // Stage 10 - Validate down payment collection
+                                        down_payment_collect_timestamp = deal_details.get("Down_Payment_Collect_Timestamp");
+                                        w9_soft_credit_consent = deal_details.get("W9_Collection_Soft_Credit_Consent");
+                                        if (down_payment_collect_timestamp != null && w9_soft_credit_consent != null)
+                                        {
+                                            // Update stage to "Down Payment Collected"
+                                            deal_map.put("Stage", "Opportunity Stage 10 - DownPayment Collected");
+                                            update_deal = zoho.crm.updateRecord("Deals", deal_id, deal_map);
+                                            info update_deal;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
