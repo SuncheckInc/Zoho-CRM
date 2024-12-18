@@ -1,0 +1,71 @@
+##### Update the deal stage to "Opportunity Stage 5 - Quote Presented" only when all required fields in the "Deal Stage 5 - Quote Presented" section are completed.
+
+void automation.Admin_Update_Stage_Opportunity_Stage_5_Quote_Presented(Int deal_id)
+{
+    // Fetch the details of the deal from the CRM using the deal ID
+    deal_details = zoho.crm.getRecordById("Deals", deal_id);
+    deal_map = Map();
+
+    // Stage 5 - Validate additional products and financial details
+    additional_product = deal_details.get("Additional_Product");
+    system_total_cost = deal_details.get("System_Total_Cost");
+    federal_tax_credit = deal_details.get("System_Total_Federal_Tax_Credit");
+    eligible_suncheck = deal_details.get("System_Total_Eligible_SunCheck");
+    year_1_production = deal_details.get("System_Year_1_Production");
+
+    // Check if all required financial details and additional products are valid
+    if (additional_product.size() > 0 && system_total_cost != null && 
+        federal_tax_credit != null && eligible_suncheck != null && 
+        year_1_production != null)
+    {
+        // Update the deal stage to "Opportunity Stage 5 - Quote Presented"
+        deal_map.put("Stage", "Opportunity Stage 5 - Quote Presented");
+        update_deal = zoho.crm.updateRecord("Deals", deal_id, deal_map);
+
+        // Stage 6 - Validate contract opening timestamp
+        customer_open_agreement_timestamp = deal_details.get("Customer_Open_Agreement_Timestamp");
+        if (customer_open_agreement_timestamp != null)
+        {
+            // Update the deal stage to "Opportunity Stage 6 - Contract Opened"
+            deal_map.put("Stage", "Opportunity Stage 6 - Contract Opened");
+            update_deal = zoho.crm.updateRecord("Deals", deal_id, deal_map);
+
+            // Stage 7 - Validate contract signing timestamp
+            customer_complete_agreement_timestamp = deal_details.get("Customer_Complete_Agreement_Timestamp");
+            if (customer_complete_agreement_timestamp != null)
+            {
+                // Update the deal stage to "Opportunity Stage 7 - Contract Signed"
+                deal_map.put("Stage", "Opportunity Stage 7 - Contract Signed");
+                update_deal = zoho.crm.updateRecord("Deals", deal_id, deal_map);
+
+                // Stage 8 - Validate site survey order details
+                site_capture_ordered_timestamp = deal_details.get("Site_Capture_Ordered_Timestamp");
+                if (site_capture_ordered_timestamp != null)
+                {
+                    // Update the deal stage to "Opportunity Stage 8 - Site Survey Started"
+                    deal_map.put("Stage", "Opportunity Stage 8 - Site Survey Started");
+                    update_deal = zoho.crm.updateRecord("Deals", deal_id, deal_map);
+
+                    // Stage 9 - Validate site survey submission
+                    site_capture_report_file = deal_details.get("Site_Capture_Report_File");
+                    if (site_capture_report_file != null)
+                    {
+                        // Update the deal stage to "Opportunity Stage 9 - Site Survey Submitted"
+                        deal_map.put("Stage", "Opportunity Stage 9 - Site Survey Submitted");
+                        update_deal = zoho.crm.updateRecord("Deals", deal_id, deal_map);
+
+                        // Stage 10 - Validate down payment collection details
+                        down_payment_collect_timestamp = deal_details.get("Down_Payment_Collect_Timestamp");
+                        w9_soft_credit_consent = deal_details.get("W9_Collection_Soft_Credit_Consent");
+                        if (down_payment_collect_timestamp != null && w9_soft_credit_consent != null)
+                        {
+                            // Update the deal stage to "Opportunity Stage 10 - DownPayment Collected"
+                            deal_map.put("Stage", "Opportunity Stage 10 - DownPayment Collected");
+                            update_deal = zoho.crm.updateRecord("Deals", deal_id, deal_map);
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
