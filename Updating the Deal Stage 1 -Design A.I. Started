@@ -1,6 +1,6 @@
 # Update the deal stages based on the progress of each section within the deal.  
-# For example, if the section is named "Deal Stage 0 - Pre-Design" and all required fields in that section are complete, then update the stage accordingly.
-# Function is trigger on the "Deal Stage 0 - Pre-Design" section modification
+# For example, if the section is named "Deal Stage 1 -Design A.I. Started" and all required fields in that section are complete, then update the stage accordingly.
+# Function is trigger on the "Deal Stage 1 -Design A.I. Started" section modification
 
 void automation.test_stage(Int deal_id)
 {
