@@ -1,0 +1,58 @@
+############ When the installer field is not empty, we update the "Total Installer Payment" field in the Project module based on its value.############
+
+void automation.Admin_For_Update_Total_Installer_Payment(Int project_id)
+{
+    // Fetch project details using the provided project ID from Zoho CRM
+    project_details = zoho.crm.getRecordById("Project", project_id);
+    
+    // Extract the system size and additional product details from the project record
+    system_size = ifnull(project_details.get("System_Size"), 0);  // System size (default to 0 if null)
+    additional_product = project_details.get("Additional_Product");  // Additional product (e.g., backup)
+    installer = project_details.get("Installer");  // Extract the installer details from the project
+    
+    info installer;  // Log installer details for debugging
+    
+    // Check if an installer is assigned to the project
+    if(installer != null)
+    {
+        // Fetch the installer ID and retrieve the detailed record for the installer
+        installer_id = installer.getJSON("id");
+        info installer_id;  // Log installer ID
+        
+        installer_details = zoho.crm.getRecordById("Installer", installer_id);  // Fetch detailed installer record
+        
+        // Extract cost details for the installer
+        base_cost = ifnull(installer_details.getJSON("Base_Cost"), 0);  // Base cost (default to 0 if null)
+        info base_cost;  // Log base cost for debugging
+        
+        backup_cost = ifnull(installer_details.getJSON("Backup_Cost"), 0);  // Backup cost (default to 0 if null)
+        info backup_cost;  // Log backup cost for debugging
+        
+        installer_adder_amount = ifnull(installer_details.getJSON("Installer_Adder_Amount"), 0);  // Additional installer amount (default to 0 if null)
+        info installer_adder_amount;  // Log additional installer amount for debugging
+    }
+
+    // Calculate the total installer payment based on whether additional products (like Backup) are involved
+    if(additional_product.contains("Backup"))
+    {
+        // If "Backup" is included, add the backup cost to the calculation
+        total_installer_payment = base_cost * system_size + backup_cost + installer_adder_amount;
+        info total_installer_payment;  // Log the total installer payment with backup included
+    }
+    else
+    {
+        // If no "Backup", only calculate base cost and installer adder amount
+        total_installer_payment = base_cost * system_size + installer_adder_amount;
+        info total_installer_payment;  // Log the total installer payment without backup
+    }
+
+    // Prepare the map to update the total installer payment in the project record
+    project_map = Map();
+    project_map.put("Total_Installer_Payment", total_installer_payment);  // Map the calculated total installer payment to the field
+    
+    info project_map;  // Log the update data before applying the update
+    
+    // Update the project record in Zoho CRM with the calculated total installer payment
+    update_project = zoho.crm.updateRecord("Project", project_id, project_map, {"trigger": {"workflow"}});
+    info update_project;  // Log the response from the update operation
+}
