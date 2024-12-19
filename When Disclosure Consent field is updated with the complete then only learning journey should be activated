@@ -1,0 +1,91 @@
+#### When Disclosure Consent field is updated with the complete then only learning journey should be activated
+
+void automation.Admin_Update_Learning_App_Journey_For_Disclosure(Int deal_id)
+{
+deal_details = zoho.crm.getRecordById("Deals",deal_id);
+proposalId = deal_details.getJSON("Aerialytic_Proposal_Id");
+customerId = deal_details.getJSON("Aerialytic_Customer_Id");
+state_project = deal_details.get("State_Project");
+info state_project;
+disclosure_consent = deal_details.get("Disclosure_Consent");
+info disclosure_consent;
+date_obj = zoho.currenttime;
+formatted_date = date_obj.toString("yyyy-MM-dd'T'HH:mm:ss'Z'");
+base_url = "https://platform.aisolar.design/apps/customer-portal";
+orgId = "org_gmZTVU5DSEVmbGVnYWN5";
+configurationId = "cnfgrtn_gngZY20yeGl0dDcwMDAwMDlydm9jM3ZsajBib2UxLjAuMA";
+// Prepare the actions URL
+actions_url = base_url + "/api/" + orgId + "/" + customerId + "/" + proposalId + "/" + configurationId + "/solar-process";
+// Prepare the steps as per the JSON format
+step1 = Map();
+step1.put("number",1);
+step1.put("title","Education Journey");
+step1.put("description","Learn about solar energy through interactive modules. Discover how solar works, its benefits, and design your own setup with our 3D AI tool. Visualize energy savings and customize your system to fit your needs. Start building your solar future today!");
+step1.put("completedAt",formatted_date);
+step1.put("actions",List());
+step2 = Map();
+step2.put("number",2);
+step2.put("title","Review Agreement");
+step2.put("description","Update the terms of your solar project by signing the installation agreement.");
+// Define the list of actions
+actions2 = List();
+// Action 1: Sign Agreement
+action2_1 = Map();
+action2_1.put("order",1);
+action2_1.put("url","https://creatorapp.zohopublic.com/suncheck/sign-agreement/page-perma/Sign_Agreement/DpZ1J6Ohm9StpUpfdjezdrFrTqRwEEanKfs1234ty4C6AW70K3G1S7K9BCR7XGrGytGs8SyE8zZ1VgXA3Jp6ef9XKMvfPv04ep3a?crm_deal_id=" + deal_id);
+action2_1.put("label","Review Agreement");
+action2_1.put("priority","PRIMARY");
+action2_1.put("target","BLANK");
+action2_1.put("visibility","CURRENT");
+actions2.add(action2_1);
+step2.put("actions",actions2);
+// step3 = Map();
+// step3.put("number",3);
+// step3.put("title","Site Inspection");
+// step3.put("description","Our team will conduct a detailed site survey.");
+// // step3.put("completedAt",formatted_date);
+// actions3 = List();
+// action3 = Map();
+// action3.put("order",1);
+// action3.put("url","https://example.com/updated-site-survey-details");
+// action3.put("label","Open Site Survey");
+// action3.put("priority","PRIMARY");
+// action3.put("target","BLANK");
+// action3.put("visibility","CURRENT");
+// actions3.add(action3);
+// step3.put("actions",actions3);
+step4 = Map();
+step4.put("number",3);
+step4.put("title","Make Deposit");
+step4.put("description","Our team will conduct a detailed site survey.");
+// step4.put("completedAt",formatted_date);
+actions4 = List();
+action4 = Map();
+action4.put("order",1);
+action4.put("url","https://gist.githack.com/AndriiTsok/01c4cd9ff6be709d2c70bf774e92106a/raw/8f56b45a7106d67319970d7e28d4c9fbc55730d4/deposit.html");
+action4.put("label","Pay $250 Deposit");
+action4.put("priority","PRIMARY");
+action4.put("target","MODAL");
+action4.put("visibility","CURRENT");
+actions4.add(action4);
+step4.put("actions",actions4);
+steps = List();
+steps.add(step1);
+steps.add(step2);
+// steps.add(step3);
+steps.add(step4);
+param = Map();
+param.put("steps",steps);
+header_map = Map();
+header_map.put("Content-Type","application/json");
+info "Payload: " + param.toString();
+response = invokeurl
+[
+	url :actions_url
+	type :PUT
+	parameters:param.toString()
+	headers:header_map
+];
+// Log the API response for debugging purposes
+info "API Response: " + response;
+}
