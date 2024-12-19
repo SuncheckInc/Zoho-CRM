@@ -1,0 +1,44 @@
+#### To update the image from the landing page equipment location view inside the Zoho WorkDrive folderi
+#### It should be placed in the same folder that was created during the deal creation process.
+
+void automation.Admin_Update_WorkDrive_The_Equipment_Location_View(Int deal_id)
+{
+    // Fetch the deal details using the deal ID
+    deal_details = zoho.crm.getRecordById("Deals", deal_id);
+    
+    // Get the Equipment Location View URL from the deal details
+    equipment_location_view = deal_details.get("Equipment_Location_View");
+    info equipment_location_view; // Log the Equipment Location View URL
+    
+    // Get the Deal Name from the deal details (commented out for debugging)
+    deal_name = deal_details.getJSON("Deal_Name");
+    // info deal_name; // Log the Deal Name
+    
+    // Get the WorkDrive Folder URL from the deal details (commented out for debugging)
+    workdrive_folder_url = deal_details.getJSON("WorkDrive_Folder_URL");
+    // info workdrive_folder_url; // Log the WorkDrive Folder URL
+    
+    // Extract the folder ID from the WorkDrive Folder URL
+    workdrive_folder_id = workdrive_folder_url.getSuffix("folders/");
+    // info workdrive_folder_id; // Log the WorkDrive Folder ID
+    
+    // Ensure that the Equipment Location View is not null before proceeding
+    if (equipment_location_view != null || equipment_location_view != null)
+    {
+        //////////////////////////// Download the Equipment Location View File //////////////////////////////
+        download_file = invokeurl
+        [
+            url : equipment_location_view
+            type : GET
+        ];
+        info download_file; // Log the download response
+        
+        /////////////////////////// Define the file name for the uploaded file ///////////////////////////
+        file_name = "Equipment Location View_file.png";
+        // info file_name; // Log the file name for debugging
+        
+        ////////////////////////// Upload the file to the WorkDrive folder ////////////////////////////////
+        upload = zoho.workdrive.uploadFile(download_file, workdrive_folder_id, file_name, false, "work_drive");
+        info upload; // Log the upload response
+    }
+}
