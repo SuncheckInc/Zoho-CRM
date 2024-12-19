@@ -1,4 +1,5 @@
-#### Update the Project Record in Site Capture
+#### Update the Project Record in Site Capture when record is created in project module and based on the site capture project id modification
+
 
 void automation.Admin_For_Update_Project_In_Site_Capture(Int project_id)
 {
