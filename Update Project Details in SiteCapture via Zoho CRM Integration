@@ -1,0 +1,118 @@
+#### Update the Project Record in Site Capture
+
+void automation.Admin_For_Update_Project_In_Site_Capture(Int project_id)
+{
+    // Fetch project details from the CRM using the Project ID
+    project_details = zoho.crm.getRecordById("Project", project_id);
+
+    // Extract related Deal ID from project details
+    deal_id = project_details.get("Deal").getJSON("id");
+
+    // Extract project-related and customer details
+    email = ifnull(project_details.get("Customer_Email"), "");
+    phone_number = ifnull(project_details.get("Phone_Number"), "");
+    project_address1 = ifnull(project_details.get("State_Project"), "");
+    project_city = ifnull(project_details.get("City_Project"), "");
+    project_address2 = ifnull(project_details.get("Address2"), "");
+    project_zip = ifnull(project_details.get("Zip_Code_Project"), "");
+    latitude = ifnull(project_details.get("Latitude"), "");
+    longitude = ifnull(project_details.get("Longitude"), "");
+    country = ifnull(project_details.get("Country"), "");
+    countrycode = ifnull(project_details.get("CountryCode"), "");
+    district = ifnull(project_details.get("District"), "");
+    districtCode = ifnull(project_details.get("DistrictCode"), "");
+    formattedArea = ifnull(project_details.get("FormattedArea"), "");
+    formatted = ifnull(project_details.get("Formatted"), "");
+    coverage_id = ifnull(project_details.get("Coverage_ID"), "");
+    clientallowed = ifnull(project_details.get("ClientAllowed"), "");
+    homeowner_name = ifnull(project_details.get("Homeowner_Name"), "");
+    site_capture_project_id = ifnull(project_details.get("Site_Capture_Project_ID"), "");
+    due_date = project_details.get("Due_Date");
+    customer_first_name = ifnull(project_details.get("Customer_First_Name"), "");
+    customer_last_name = ifnull(project_details.get("Customer_Last_Name"), "");
+
+    // Construct the SiteCapture API URL for project update
+    url = "https://api.sitecapture.com/customer_api/2_0/project/" + site_capture_project_id;
+
+    // Prepare the payload for updating the project in SiteCapture
+    param_map = Map();
+    fields_list = List();
+    fields_list.add({"key":"address", "value": project_address1});
+    fields_list.add({"key":"address_line2", "value": project_city + ", " + project_address2});
+    fields_list.add({"key":"zipcode", "value": project_zip});
+    fields_list.add({"key":"phone", "value": phone_number});
+    fields_list.add({"key":"email", "value": email});
+    fields_list.add({"key":"name", "value": homeowner_name});
+    param_map.put("fields", fields_list);
+    param_map.put("due_date", due_date);
+
+    // Generate Basic Authentication Header for SiteCapture API
+    base64authcode = zoho.encryption.base64Encode("SAZTech:saztechsupport1!");
+    header_map = Map();
+    header_map.put("Authorization", "Basic " + base64authcode);
+    header_map.put("API_KEY", "MR673Z21GSHF");
+
+    // Send POST request to update project in SiteCapture
+    response = invokeurl
+    [
+        url : url
+        type : POST
+        parameters : param_map.toString()
+        headers : header_map
+    ];
+    info response;
+
+    // Check response status
+    if (response.get("status") == "OK")
+    {
+        // Update Deal record in Zoho CRM
+        deal_map = Map();
+        deal_map.put("SiteCapture_Ordered_Timestamp", zoho.currenttime.toString("yyyy-MM-dd'T'HH:mm:ss"));
+        update_deal_record = zoho.crm.updateRecord("Deals", deal_id, deal_map, {"trigger": {"workflow"}});
+        info update_deal_record;
+
+        // Start the consumer inspection in SiteCapture
+        url = "https://api.sitecapture.com/customer_api/2_0/project/start_consumer_inspection/" + site_capture_project_id;
+        param_map = Map();
+        param_map.put("template_key", "training");
+        param_map.put("send_initial_email", "true");
+        param_map.put("send_reminders", "false");
+        header_map.put("Content-Type", "application/json");
+
+        response = invokeurl
+        [
+            url : url
+            type : POST
+            parameters : param_map.toString()
+            headers : header_map
+        ];
+        info response;
+
+        // Fetch the URL from the response for the SiteCapture template
+        url = response.getJSON("url");
+        project_map = Map();
+        project_map.put("Site_Capture_Template_URL", url);
+
+        // Update the Project record in Zoho CRM with the SiteCapture template URL
+        update_project = zoho.crm.updateRecord("Project", project_id, project_map, {"trigger": {"workflow"}});
+
+        // Trigger webhook to RingCentral SMS with required details
+        project_details = zoho.crm.getRecordById("Project", project_id);
+        site_capture_template_url = project_details.get("Site_Capture_Template_URL");
+        url = "https://flow.zoho.com/854705855/flow/webhook/incoming?zapikey=1001.e8ae9e6bff02a9dd0c98e5385cb8d2e2.b89951675c718eca621eeab498fbde81&isdebug=false";
+        param_map = Map();
+        param_map.put("site_capture_project_id", site_capture_project_id);
+        param_map.put("phone_number", phone_number);
+        param_map.put("first_name", customer_first_name);
+        param_map.put("last_name", customer_last_name);
+        param_map.put("site_capture_template_url", site_capture_template_url);
+
+        project = invokeurl
+        [
+            url : url
+            type : POST
+            parameters : param_map
+        ];
+        info project;
+    }
+}
