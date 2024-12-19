@@ -1,0 +1,101 @@
+#### Payment status is pending then we are enable the pending button and hide the make deposite button from learning journey
+
+void automation.Admin_For_Update_Learning_Journey_For_Pending(Int deal_id)
+{
+    // Fetch Deal Details
+    deal_details = zoho.crm.getRecordById("Deals", deal_id);
+    proposalId = deal_details.getJSON("Aerialytic_Proposal_Id");
+    customerId = deal_details.getJSON("Aerialytic_Customer_Id");
+    zoho_sign_workdrive = deal_details.getJSON("Zoho_Sign_Workdrive_URL");
+    date_obj = zoho.currenttime;
+    formatted_date = date_obj.toString("yyyy-MM-dd'T'HH:mm:ss'Z'");
+    info formatted_date;
+    
+    // Fetch Payment Status
+    payment_status = ifnull(deal_details.getJSON("Payment_Status"), "");
+    
+    // Define base URL and identifiers for AISolar API
+    base_url = "https://platform.aisolar.design/apps/customer-portal";
+    orgId = "org_gmZTVU5DSEVmbGVnYWN5";
+    configurationId = "cnfgrtn_gngZY20yeGl0dDcwMDAwMDlydm9jM3ZsajBib2UxLjAuMA";
+    
+    // Prepare the actions URL
+    actions_url = base_url + "/api/" + orgId + "/" + customerId + "/" + proposalId + "/" + configurationId + "/solar-process";
+    info actions_url;
+
+    // Step 1: Education Journey
+    step1 = Map();
+    step1.put("number", 1);
+    step1.put("title", "Education Journey");
+    step1.put("description", "Learn about solar energy through interactive modules. Discover how solar works, its benefits, and design your own setup with our 3D AI tool. Visualize energy savings and customize your system to fit your needs. Start building your solar future today!");
+    step1.put("completedAt", formatted_date);
+    step1.put("actions", List());
+
+    // Step 2: Sign Agreement
+    step2 = Map();
+    step2.put("number", 2);
+    step2.put("title", "Sign Agreement");
+    step2.put("description", "Updated terms of your solar project by signing the installation agreement.");
+    step2.put("completedAt", formatted_date);
+    actions2 = List();
+    
+    // Action for signing the agreement
+    action2_2 = Map();
+    action2_2.put("order", 2);
+    action2_2.put("url", zoho_sign_workdrive);
+    action2_2.put("label", "Review Agreement");
+    action2_2.put("priority", "SECONDARY");
+    action2_2.put("target", "BLANK");
+    action2_2.put("visibility", "HISTORICAL");
+    
+    actions2.add(action2_2);
+    step2.put("actions", actions2);
+
+    // Step 4: Make Deposit (Pending)
+    step4 = Map();
+    step4.put("number", 3);
+    step4.put("title", "Make Deposit");
+    step4.put("description", "Our team will conduct a detailed site survey.");
+    actions4 = List();
+    
+    // Action for making a deposit (Pending)
+    action4 = Map();
+    action4.put("order", 1);
+    action4.put("url", "https://gist.githack.com/AndriiTsok/01c4cd9ff6be709d2c70bf774e92106a/raw/8f56b45a7106d67319970d7e28d4c9fbc55730d4/deposit.html");
+    action4.put("label", "Pending");
+    action4.put("priority", "PRIMARY");
+    action4.put("target", "MODAL");
+    action4.put("visibility", "CURRENT");
+    
+    actions4.add(action4);
+    step4.put("actions", actions4);
+
+    // Combine all steps
+    steps = List();
+    steps.add(step1);
+    steps.add(step2);
+    steps.add(step4);
+
+    // Prepare the final payload
+    param = Map();
+    param.put("steps", steps);
+    
+    // Set headers for the API request
+    header_map = Map();
+    header_map.put("Content-Type", "application/json");
+
+    // Log the payload
+    info "Payload: " + param.toString();
+
+    // Make the API call to update the learning journey
+    response = invokeurl
+    [
+        url : actions_url
+        type : PUT
+        parameters: param.toString()
+        headers: header_map
+    ];
+    
+    // Log the API response
+    info "API Response: " + response;
+}
