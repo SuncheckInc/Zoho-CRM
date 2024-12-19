@@ -1,0 +1,97 @@
+#### The "Learning Journey" should be activated only when both the "Aerialytic Proposal ID" and "Aerialytic Customer ID" are not empty
+
+void automation.Admin_For_Zoho_Sign(Int deal_id)
+{
+    // Fetch deal details by deal ID
+    deal_details = zoho.crm.getRecordById("Deals", deal_id);
+    proposalId = deal_details.getJSON("Aerialytic_Proposal_Id");
+    customerId = deal_details.getJSON("Aerialytic_Customer_Id");
+    state_project = deal_details.get("State_Project");
+    info state_project;
+
+    // Get current time and format it
+    date_obj = zoho.currenttime;
+    formatted_date = date_obj.toString("yyyy-MM-dd'T'HH:mm:ss'Z'");
+
+    // Define base URL and identifiers
+    base_url = "https://platform.aisolar.design/apps/customer-portal";
+    orgId = "org_gmZTVU5DSEVmbGVnYWN5";
+    configurationId = "cnfgrtn_gngZY20yeGl0dDcwMDAwMDlydm9jM3ZsajBib2UxLjAuMA";
+
+    // Prepare actions URL
+    actions_url = base_url + "/api/" + orgId + "/" + customerId + "/" + proposalId + "/" + configurationId + "/solar-process";
+
+    // Step 1: Education Journey
+    step1 = Map();
+    step1.put("number", 1);
+    step1.put("title", "Education Journey");
+    step1.put("description", "Learn about solar energy...");
+    step1.put("completedAt", formatted_date);
+    step1.put("actions", List());
+
+    // Step 2: Agreement
+    if (state_project == "IL") {
+        // Step 2 for Illinois: Send Disclosure
+        step2 = Map();
+        step2.put("number", 2);
+        step2.put("title", "Agreed to send Disclosure");
+        step2.put("description", "Due to State of IL Requirements...");
+        actions2 = List();
+        action2_1 = Map();
+        action2_1.put("order", 1);
+        action2_1.put("url", "https://creatorapp.zohopublic.com/suncheck/sign-agreement/page-perma/Agree_Button_For_State_IL/...?" + "deal_id=" + deal_id);
+        actions2.add(action2_1);
+        step2.put("actions", actions2);
+    } else {
+        // Step 2 for other states: Sign Agreement
+        step2 = Map();
+        step2.put("number", 2);
+        step2.put("title", "Sign Agreement");
+        step2.put("description", "Update the terms of your solar project...");
+        actions2 = List();
+        action2_1 = Map();
+        action2_1.put("order", 1);
+        action2_1.put("url", "https://creatorapp.zohopublic.com/suncheck/sign-agreement/page-perma/Sign_Agreement/...?" + "crm_deal_id=" + deal_id);
+        actions2.add(action2_1);
+        step2.put("actions", actions2);
+    }
+
+    // Step 4: Make Deposit
+    step4 = Map();
+    step4.put("number", 3);
+    step4.put("title", "Make Deposit");
+    step4.put("description", "Pay $250 deposit...");
+    actions4 = List();
+    action4 = Map();
+    action4.put("order", 1);
+    action4.put("url", "https://gist.githack.com/AndriiTsok/.../deposit.html");
+    actions4.add(action4);
+    step4.put("actions", actions4);
+
+    // Create the steps array
+    steps = List();
+    steps.add(step1);
+    steps.add(step2);
+    steps.add(step4);
+
+    // Create request payload
+    param = Map();
+    param.put("steps", steps);
+    header_map = Map();
+    header_map.put("Content-Type", "application/json");
+
+    // Log payload
+    info "Payload: " + param.toString();
+
+    // Send API request to update progress
+    response = invokeurl
+    [
+        url: actions_url
+        type: PUT
+        parameters: param.toString()
+        headers: header_map
+    ];
+
+    // Log API response
+    info "API Response: " + response;
+}
