@@ -1,0 +1,97 @@
+#### The "Review Agreement" button in the learning app journey should be visible only when the "Zoho Sign WorkDrive URL" is not empty.
+
+void automation.Admin_Update_Review_Agreement(Int deal_id)
+{
+    // Fetch deal details by deal ID
+    deal_details = zoho.crm.getRecordById("Deals", deal_id);
+    proposalId = deal_details.getJSON("Aerialytic_Proposal_Id");
+    customerId = deal_details.getJSON("Aerialytic_Customer_Id");
+    zoho_sign_workdrive = deal_details.getJSON("Zoho_Sign_Workdrive_URL");
+
+    // Get current time and format it
+    date_obj = zoho.currenttime;
+    formatted_date = date_obj.toString("yyyy-MM-dd'T'HH:mm:ss'Z'");
+    info formatted_date;
+
+    // Define base URL and identifiers
+    base_url = "https://platform.aisolar.design/apps/customer-portal";
+    orgId = "org_gmZTVU5DSEVmbGVnYWN5";
+    configurationId = "cnfgrtn_gngZY20yeGl0dDcwMDAwMDlydm9jM3ZsajBib2UxLjAuMA";
+
+    // Prepare actions URL
+    actions_url = base_url + "/api/" + orgId + "/" + customerId + "/" + proposalId + "/" + configurationId + "/solar-process";
+    info actions_url;
+
+    // Step 1: Education Journey
+    step1 = Map();
+    step1.put("number", 1);
+    step1.put("title", "Education Journey");
+    step1.put("description", "Learn about solar energy...");
+    step1.put("completedAt", formatted_date);
+    step1.put("actions", List());
+
+    // Step 2: Review and Sign Agreement
+    step2 = Map();
+    step2.put("number", 2);
+    step2.put("title", "Review Agreement");
+    step2.put("description", "Updated terms of your solar project...");
+    step2.put("completedAt", formatted_date);
+
+    actions2 = List();
+    action2_2 = Map();
+    action2_2.put("order", 2);
+    action2_2.put("url", zoho_sign_workdrive); // Use the URL from Zoho_Sign_Workdrive_URL
+    action2_2.put("label", "Review Agreement");
+    action2_2.put("priority", "SECONDARY");
+    action2_2.put("target", "BLANK"); // Opens in a new tab
+    action2_2.put("visibility", "HISTORICAL"); // Visible as historical action
+    actions2.add(action2_2);
+
+    step2.put("actions", actions2);
+
+    // Step 4: Make Deposit
+    step4 = Map();
+    step4.put("number", 3);
+    step4.put("title", "Make Deposit");
+    step4.put("description", "Pay $250 deposit...");
+    actions4 = List();
+    action4 = Map();
+    action4.put("order", 1);
+    action4.put("url", "https://gist.githack.com/AndriiTsok/01c4cd9ff6be709d2c70bf774e92106a/raw/8f56b45a7106d67319970d7e28d4c9fbc55730d4/deposit.html");
+    action4.put("label", "Pay $250 Deposit");
+    action4.put("priority", "PRIMARY");
+    action4.put("target", "MODAL"); // Open in a modal window
+    action4.put("visibility", "CURRENT");
+    actions4.add(action4);
+
+    step4.put("actions", actions4);
+
+    // Main steps array
+    steps = List();
+    steps.add(step1);
+    steps.add(step2);
+    steps.add(step4);
+
+    // Prepare the main payload
+    param = Map();
+    param.put("steps", steps);
+
+    // Prepare headers for the API call
+    header_map = Map();
+    header_map.put("Content-Type", "application/json");
+
+    // Log payload
+    info "Payload: " + param.toString();
+
+    // Send API request to update progress
+    response = invokeurl
+    [
+        url: actions_url
+        type: PUT
+        parameters: param.toString()
+        headers: header_map
+    ];
+
+    // Log API response
+    info "API Response: " + response;
+}
