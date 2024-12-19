@@ -1,0 +1,49 @@
+######## We are updating the "Total Number of Modules" field in the deal record upon the creation of an array record ##########
+
+void automation.Update_Total_Number_Of_Module(Int array_id)
+{
+    // Step 1: Retrieve the array details based on the given array ID
+    arrays_deatails = zoho.crm.getRecordById("Arrays", array_id);
+    array_x_number_of_modules = arrays_deatails.get("Array_X_Number_of_Modules"); // Get the number of modules in the array
+    info array_x_number_of_modules; // Log number of modules for debugging
+    array_x_azimuth = arrays_deatails.get("Array_X_Azimuth"); // Get the azimuth of the array
+    array_x_solar_access = arrays_deatails.get("Array_X_Solar_Access"); // Get solar access of the array
+    array_x_tilt = arrays_deatails.get("Array_X_Tilt"); // Get the tilt of the array
+    info array_x_tilt; // Log tilt for debugging
+
+    // Step 2: Retrieve the deal associated with the array
+    deal_id = arrays_deatails.get("Project").getJSON("id");
+    deals_detail = zoho.crm.getRecordById("Deals", deal_id); // Fetch deal details
+    total_no_of_module = ifnull(deals_detail.get("Total_No_Of_Modules"), 0); // Get the total number of modules in the deal
+    deal_map = Map();
+    
+    // Step 3: Calculate the updated total number of modules by adding the modules from the array
+    sum_of_total_arrays = total_no_of_module + array_x_number_of_modules;
+    info sum_of_total_arrays; // Log the new total number of modules for debugging
+    deal_map.put("Total_No_Of_Modules", sum_of_total_arrays); // Prepare the map for updating the deal
+
+    // Step 4: Update the deal record with the new total number of modules
+    update_deal = zoho.crm.updateRecord("Deals", deal_id, deal_map);
+    info update_deal; // Log the result of the deal update
+
+    /////////////////////////////////////////////////////////////////////////////
+    // Step 5: Fetch array details again to get the deal_id (in case it was not fetched earlier)
+    arrays_details = zoho.crm.getRecordById("Arrays", array_id);
+    deal_id = arrays_details.getJSON("Project").getJSON("id"); // Retrieve the deal ID from the array record
+
+    // Step 6: If a deal ID exists, check the number of arrays associated with that deal
+    if (deal_id != null)
+    {
+        search_record = zoho.crm.searchRecords("Arrays", "(Project:equals:" + deal_id + ")");
+        record_count = search_record.size(); // Count how many arrays are associated with this deal
+
+        // Step 7: Prepare to update the array record with the total count of arrays for the deal
+        array_map = Map();
+        array_map.put("Array_ID", record_count.toString()); // Map the count of arrays to update the array record
+        info array_map; // Log the array map for debugging
+
+        // Step 8: Update the array record with the count of associated arrays
+        update_array = zoho.crm.updateRecord("Arrays", array_id, array_map);
+        info update_array; // Log the result of the array update
+    }
+}
