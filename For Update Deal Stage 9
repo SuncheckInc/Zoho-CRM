@@ -1,0 +1,34 @@
+#### The deal stage should be updated to "Opportunity Stage 9 - Site Survey Submitted" only when the "Deal Stage 9 - Site Survey Submitted" section is modified, and all the required fields in that section are filled with data. 
+#### Only when all the data is available should the deal stage be updated to "Opportunity Stage 9 - Site Survey Submitted".
+.
+void automation.Admin_Update_Stage_Opportunity_Stage_9_Site_Survey_Submitted(Int deal_id)
+{
+    // Fetch the deal details using the deal ID
+    deal_details = zoho.crm.getRecordById("Deals", deal_id);
+
+    // Retrieve the site survey report file to check if it has been submitted
+    site_capture_report_file = deal_details.get("Site_Capture_Report_File");
+
+    // Initialize a map for deal updates
+    deal_map = Map();
+
+    // Stage 9 - Check if the site survey report has been submitted
+    if (site_capture_report_file != null)
+    {
+        // Update the deal stage to "Opportunity Stage 9 - Site Survey Submitted"
+        deal_map.put("Stage", "Opportunity Stage 9 - Site Survey Submitted");
+        update_deal = zoho.crm.updateRecord("Deals", deal_id, deal_map);
+
+        // Stage 10 - Check if down payment details are available
+        down_payment_collect_timestamp = deal_details.get("Down_Payment_Collect_Timestamp");
+        w9_soft_credit_consent = deal_details.get("W9_Collection_Soft_Credit_Consent");
+
+        // If down payment and W9 consent details are available
+        if (down_payment_collect_timestamp != null && w9_soft_credit_consent != null)
+        {
+            // Update the deal stage to "Opportunity Stage 10 - DownPayment Collected"
+            deal_map.put("Stage", "Opportunity Stage 10 - DownPayment Collected");
+            update_deal = zoho.crm.updateRecord("Deals", deal_id, deal_map);
+        }
+    }
+}
