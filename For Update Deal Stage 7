@@ -1,0 +1,45 @@
+###### The deal stage should be updated to "Opportunity Stage 7 - Contract Signed" only after all fields in the "Deal Stage 7 - Contract Signed" section are fully completed.
+
+void automation.Admin_For_Update_Stage_Opportunity_Stage_7_Contract_Signed(Int deal_id)
+{
+    // Fetch the deal details using the deal ID
+    deal_details = zoho.crm.getRecordById("Deals", deal_id);
+    deal_map = Map();
+
+    // Stage 7 - Check if the contract signing timestamp is available
+    customer_complete_agreement_timestamp = deal_details.get("Customer_Complete_Agreement_Timestamp");
+    if (customer_complete_agreement_timestamp != null)
+    {
+        // Update the deal stage to "Opportunity Stage 7 - Contract Signed"
+        deal_map.put("Stage", "Opportunity Stage 7 - Contract Signed");
+        update_deal = zoho.crm.updateRecord("Deals", deal_id, deal_map);
+
+        // Stage 8 - Check if the site survey order timestamp is available
+        site_capture_ordered_timestamp = deal_details.get("Site_Capture_Ordered_Timestamp");
+        if (site_capture_ordered_timestamp != null)
+        {
+            // Update the deal stage to "Opportunity Stage 8 - Site Survey Started"
+            deal_map.put("Stage", "Opportunity Stage 8 - Site Survey Started");
+            update_deal = zoho.crm.updateRecord("Deals", deal_id, deal_map);
+
+            // Stage 9 - Check if the site survey report file is available
+            site_capture_report_file = deal_details.get("Site_Capture_Report_File");
+            if (site_capture_report_file != null)
+            {
+                // Update the deal stage to "Opportunity Stage 9 - Site Survey Submitted"
+                deal_map.put("Stage", "Opportunity Stage 9 - Site Survey Submitted");
+                update_deal = zoho.crm.updateRecord("Deals", deal_id, deal_map);
+
+                // Stage 10 - Check if down payment details are available
+                down_payment_collect_timestamp = deal_details.get("Down_Payment_Collect_Timestamp");
+                w9_soft_credit_consent = deal_details.get("W9_Collection_Soft_Credit_Consent");
+                if (down_payment_collect_timestamp != null && w9_soft_credit_consent != null)
+                {
+                    // Update the deal stage to "Opportunity Stage 10 - DownPayment Collected"
+                    deal_map.put("Stage", "Opportunity Stage 10 - DownPayment Collected");
+                    update_deal = zoho.crm.updateRecord("Deals", deal_id, deal_map);
+                }
+            }
+        }
+    }
+}
