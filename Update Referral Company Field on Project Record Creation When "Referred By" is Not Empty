@@ -1,0 +1,34 @@
+####### When the "Referred By" field is not empty, the "Referral Company" field is updated upon the creation of the project record. ##########
+
+void automation.Admin_Update_Referral_Company_Field_On_Create_Project(Int project_id)
+{
+    // Fetch the project details using the provided project ID from Zoho CRM
+    project_details = zoho.crm.getRecordById("Project", project_id);
+
+    // Get the "Referred_by" field, which holds the referral details for the project
+    referral_by = project_details.get("Referred_by");
+
+    // Retrieve the referral ID from the "Referred_by" field
+    referral_by_id = referral_by.getJSON("id");
+
+    // Fetch the details of the referral using the referral ID
+    referral_details = zoho.crm.getRecordById("Referrals", referral_by_id);
+
+    // Extract the referral company name from the referral details
+    referral_company = referral_details.get("Referral_Company_Name");
+    info referral_company;  // Log referral company details for debugging
+
+    // Retrieve the ID of the referral company
+    referral_company_id = referral_company.getJSON("id");
+    info referral_company_id;  // Log referral company ID for debugging
+
+    // Prepare the data to update the "Referral_Company" field in the project record
+    project_map = Map();
+    project_map.put("Referral_Company", referral_company_id);  // Map the referral company ID to the project record
+
+    info project_map;  // Log the map data before performing the update
+
+    // Update the project record with the referral company ID
+    update_project = zoho.crm.updateRecord("Project", project_id, project_map);
+    info update_project;  // Log the response from the update operation
+}
