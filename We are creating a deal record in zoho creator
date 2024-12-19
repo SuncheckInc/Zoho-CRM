@@ -1,0 +1,64 @@
+#### 	Referred by IS NOT EMPTY
+#### Referral Company IS NOT EMPTY
+#### Then we are creating a deal record in zoho creator
+
+void automation.updare_rec_increator(Int id)
+{
+    // Fetch the deal record from Zoho CRM using the provided deal ID
+    rec = zoho.crm.getRecordById("Deals", id);
+
+    // Get the Creator ID for the deal
+    iddd = rec.getJSON("Creator_ID");
+
+    // Fetch additional details like deal name, phone number, email, etc.
+    deal_name = rec.getJSON("Deal_Name");
+    phone = rec.getJSON("Phone_Number");
+    email = rec.getJSON("Customer_Email");
+
+    // Fetch the Referral Company and its Creator ID
+    referred_company = rec.get("Referral_Company").get("id");
+    referred_details = zoho.crm.getRecordById("Referral_Companies", referred_company);
+    referred_company_creator_id = referred_details.get("Company_Registration_Form_ID_in_Creator");
+
+    // Fetch the Referred By and its Creator ID
+    referred_by = rec.get("Referred_by").get("id");
+    referred_by_details = zoho.crm.getRecordById("Referrals", referred_by);
+    referred_by_creator_id = referred_by_details.get("Employee_Form_Creator_Id");
+
+    // Prepare the parameters to update in Zoho Creator
+    param = Map();
+    param.put("Deal_Name", deal_name);
+    param.put("Phone_Number1", phone);
+    param.put("Email", email);
+    param.put("Stage", rec.getJSON("Stage"));
+
+    // Get completion timestamps for each quiz and format them
+    param.put("Quiz_1_Complition", rec.getJSON("First_Quiz_Knowledge_Completion_TimeStamp").toString("dd-MMM-yyyy HH:mm:ss"));
+    param.put("Quiz_2_Completion_Time_Stamp", rec.getJSON("Second_Quiz_Data_Collection_TimeStamp").toString("dd-MMM-yyyy HH:mm:ss"));
+    param.put("Quiz_3_Completion_Time_Stamp", rec.getJSON("Third_Quiz_Knowledge_Timestamp").toString("dd-MMM-yyyy HH:mm:ss"));
+    param.put("Quiz_4_Completion_Time_Stamp", rec.getJSON("Fourth_Quiz_Solar_Quote_and_Backup_Addon_Tim").toString("dd-MMM-yyyy HH:mm:ss"));
+
+    // Prepare customer name by combining first and last name
+    param.put("Customer_Name", rec.getJSON("Customer_First_Name") + " " + rec.getJSON("Customer_Last_Name"));
+
+    // Prepare the address details
+    add = Map();
+    add.put("address_line_1", rec.getJSON("Street_Project"));
+    add.put("district_city", rec.getJSON("City_Project"));
+    add.put("state_province", rec.getJSON("State_Project"));
+    add.put("postal_code", rec.getJSON("Zip_Code_Project"));
+    param.put("Address", add);
+
+    // Update the Referred By and Referral Company Name with the creator IDs
+    param.put("Referred_By", referred_by_creator_id);
+    param.put("Referral_Company_Name", referred_company_creator_id);
+
+    // Empty map for blank parameters
+    blank = Map();
+
+    // Update the record in Zoho Creator
+    update_rec = zoho.creator.updateRecord("suncheck", "zoho-crm", "All_Deals", iddd, param, blank, "creator");
+
+    // Log the response from the update
+    info update_rec;
+}
