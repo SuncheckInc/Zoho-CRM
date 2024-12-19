@@ -1,0 +1,51 @@
+#### Create Record in Zoho Creator Project Form When Project Record is Created and "Referred By" is Not Empty
+
+void automation.create_project_increator(Int id)
+{
+    // Fetch the project record from Zoho CRM using the provided ID
+    rec = zoho.crm.getRecordById("Project", id);
+    
+    // Extract necessary fields from the project record
+    prj_name = rec.getJSON("Name");  // Project Name
+    stag = rec.getJSON("Project_Stage");  // Project Stage
+    
+    // Fetch referral company details related to the project
+    referred_company = rec.get("Referral_Company").get("id");
+    referred_details = zoho.crm.getRecordById("Referral_Companies", referred_company);
+    referred_company_creator_id = referred_details.get("Company_Registration_Form_ID_in_Creator");
+    
+    ////////////////////////////////////////////////////////////////////////////
+    
+    // Fetch details about the person who referred the project
+    referred_by = rec.get("Referred_by").get("id");
+    referred_by_details = zoho.crm.getRecordById("Referrals", referred_by);
+    referred_by_creator_id = referred_details.get("Employee_Form_Creator_Id");
+
+    ////////////////////////////////////////////////////////////////////////////
+    
+    // Prepare the parameters to create a new project record in Zoho Creator
+    param = Map();
+    param.put("Project_Name", prj_name);  // Project Name
+    param.put("Stage", stag);  // Project Stage
+    param.put("Planset_Approval_Received_TimeStamp", rec.getJSON("Planset_Approval_Received_Timestamp").toString("dd-MMM-yyyy HH:mm:ss"));  // Timestamp for planset approval
+    param.put("Installer_Accepted_TimeStamp", rec.getJSON("Installer_Accepted_Timestamp").toString("dd-MMM-yyyy HH:mm:ss"));  // Timestamp for installer acceptance
+    param.put("Permit_Approval_Received_TimeStamp", rec.getJSON("Permit_Approval_Received_Timestamp").toString("dd-MMM-yyyy HH:mm:ss"));  // Timestamp for permit approval
+    param.put("M1_Invoice_Accepted_TimeStamp", rec.getJSON("M1_Invoice_Accepted_Timestamp").toString("dd-MMM-yyyy HH:mm:ss"));  // Timestamp for invoice acceptance
+    param.put("Customer_Name", rec.getJSON("Customer_First_Name") + " " + rec.getJSON("Customer_Last_Name"));  // Full name of the customer
+    param.put("Referred_By", referred_by_creator_id);  // ID of the person who referred the project (from Creator)
+    param.put("Referral_Company_Name", referred_company_creator_id);  // ID of the referral company (from Creator)
+
+    // Create the project record in Zoho Creator
+    blank = Map();  // Blank map for any additional parameters (not needed in this case)
+    create_rec = zoho.creator.createRecord("suncheck", "zoho-crm", "Project", param, blank, "creator");
+    info create_rec;  // Log the response from Zoho Creator
+
+    // Fetch the created record's Creator ID
+    get_id = create_rec.getJSON("Creator_ID");
+
+    // Update the Zoho CRM project record with the Creator ID
+    crm_map = Map();
+    crm_map.put("Creator_ID", get_id);  // Map Creator ID to CRM field
+    update = zoho.crm.updateRecord("Project", id, crm_map);  // Update the CRM project record
+    info update;  // Log the update response
+}
