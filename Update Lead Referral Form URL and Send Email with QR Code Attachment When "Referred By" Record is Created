@@ -1,0 +1,80 @@
+####### When the "Referred By" record is created, the "Lead Referral Form URL" field is updated. 
+Additionally, upon creation, an email is sent with an attached QR code, using the specified email template. ##########
+
+
+void automation.Admin_Send_Lead_Referral_Form_Link_in_Email(Int referral_id)
+{
+    // Step 1: Construct the referral form link and update the referral record with the link
+    referral_map = Map();
+    referral_map.put("Lead_Referral_Form_URL", "https://app.suncheck.com/kris?referred_by=" + referral_id);
+    info referral_map; // Log referral map data for debugging
+    // Update the referral record in Zoho CRM with the generated link
+    update_referral_by = zoho.crm.updateRecord("Referrals", referral_id, referral_map, {"trigger": {"workflow"}});
+    info update_referral_by; // Log the response from updating the referral record
+
+    /////////////////////////////////////////////////////////////////////////////
+    // Step 2: Retrieve the referral details from Zoho CRM to extract necessary information
+    referral_details = zoho.crm.getRecordById("Referrals", referral_id);
+    if (referral_details != null)
+    {
+        link = referral_details.get("Lead_Referral_Form_URL"); // Extract the referral form link
+        info link; // Log the referral form link for debugging
+        email = referral_details.get("Email"); // Extract the referral's email address
+        name = referral_details.get("Name"); // Extract the referral's name
+        info "Link: " + link;
+        info "Email: " + email;
+        info "Name: " + name;
+
+        // Step 3: Retrieve email template fields from Zoho Writer
+        affiliateqrcode = zoho.writer.getAllFields("8r7o16117dca424b846e8bd5691183a097fcb", "email_template");
+        info affiliateqrcode; // Log the retrieved email template fields
+
+        // Step 4: Prepare data for merging into the email template
+        fieldsMap = Map();
+        fieldsMap.put("id", referral_id); // Include referral ID in the merge data
+        fieldsMap.put("Lead_Referral_Form_URL", link); // Include the referral form link in the merge data
+        info fieldsMap; // Log the fields map for debugging
+
+        // Step 5: Perform the mail merge and generate the PDF with the merged data
+        mergeMap = Map();
+        mergeMap.put("data", fieldsMap);
+        merge_values = Map();
+        merge_values.put("merge_data", mergeMap);
+        poPdf = zoho.writer.mergeAndDownload("8r7o16117dca424b846e8bd5691183a097fcb", "pdf", merge_values, "email_template");
+        info poPdf; // Log the merged PDF file for debugging
+
+        // Step 6: Attach the generated PDF to the referral record in Zoho CRM
+        attachparner_qr_code = zoho.crm.attachFile("Referrals", referral_id, poPdf);
+        info attachparner_qr_code; // Log the attachment response for debugging
+
+        // Step 7: Retrieve the email template content
+        res = invokeurl
+        [
+            url: "https://www.zohoapis.com/crm/v6/settings/email_templates/6288360000001713031"
+            type: GET
+            connection: "email_template"
+        ];
+        if (res.get("email_templates") != null)
+        {
+            temp_content = res.get("email_templates").get(0).get("mail_content"); // Get the template content
+            info temp_content; // Log the email template content for debugging
+
+            // Step 8: Replace placeholders in the email template with actual values
+            temp_content = temp_content.replaceAll("\$\{!Referrals.Id\}", referral_id.toString());
+            temp_content = temp_content.replaceAll("\$\{!Referrals.Name\}", name);
+
+            // Step 9: Send the email with the merged PDF as an attachment
+            if (email != null)
+            {
+                sendmail
+                [
+                    from: "noreply@suncheck.com"
+                    to: email
+                    subject: "Thank You for Joining SunCheck - Referral Form and QR Code Enclosed"
+                    message: temp_content
+                    Attachments: file: poPdf
+                ]
+            }
+        }
+    }
+}
