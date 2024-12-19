@@ -1,0 +1,70 @@
+#### When the "Discount Factor Percentage" field is modified, the corresponding "Quotation Record" in Zoho CRM should be updated.
+
+void automation.Admin_Update_Quotation_With_Discount_Amount1(Int deal_id)
+{
+    // Fetch Deal Details
+    deal_details = zoho.crm.getRecordById("Deals", deal_id);
+    deal_name = deal_details.get("Deal_Name");
+    discount_factor_percentage = ifnull(deal_details.get("Discount_Factor_Percentage"), 0);
+    discount_factor_percentage_notes = ifnull(deal_details.get("Discount_Factor_Percentage_Notes"), "");
+    
+    // Fetch related Quotations for the deal
+    related_records = zoho.crm.getRelatedRecords("Quotation", "Deals", deal_id);
+    
+    // If there are related Quotations, process each one
+    if (related_records.size() > 0)
+    {
+        for each rec in related_records
+        {
+            record_id = rec.get("id");
+            backup = ifnull(rec.get("Backup"), 0);
+            suncheck_amount = ifnull(rec.get("SunCheck_Amount"), 0);
+            solar_insure = ifnull(rec.get("SolarInsure"), 0);
+            module_made_in_usa = ifnull(rec.get("Module_Made_in_USA"), 0);
+            base_system_cost = ifnull(rec.get("Base_System_Cost"), 0);
+            
+            // Convert discount factor percentage to decimal
+            discount_into_number = discount_factor_percentage / 100;
+            info discount_into_number;
+            
+            // Calculate Total System Cost, Tax Credit, and Net Cost
+            update_total_system_cost_formula = (base_system_cost + module_made_in_usa + solar_insure + backup) * (1 - discount_into_number);
+            update_tax_credit = update_total_system_cost_formula * 0.3;
+            system_net_cost = update_total_system_cost_formula - (suncheck_amount + update_tax_credit);
+            
+            // Get other required fields
+            system_year_1_production = ifnull(rec.get("System_Year_1_Production"), 0);
+            utility_rate = ifnull(rec.get("Utility_Rate"), 0);
+            update_pv_dc_system_size = ifnull(rec.get("PV_DC_System_Size_W"), 0);
+            quotation_status = ifnull(rec.get("Quotation_Status"), "");
+            complete_agreement_timestamp = ifnull(rec.get("Customer_Complete_Agreement_Timestamp"), "");
+            
+            info complete_agreement_timestamp;
+            
+            // If Quotation is Active and Agreement is not complete, update Quotation record
+            if (quotation_status == "Active" && complete_agreement_timestamp == "")
+            {
+                quotation_map = Map();
+                quotation_map.put("Total_System_Cost", update_total_system_cost_formula);
+                quotation_map.put("Tax_Credit", update_tax_credit);
+                quotation_map.put("Discount_Factor", discount_factor_percentage);
+                quotation_map.put("System_Net_Cost", system_net_cost);
+                quotation_map.put("Discount_Factor_Percentage_Notes", discount_factor_percentage_notes);
+                
+                // Update the Quotation record
+                update_quote = zoho.crm.updateRecord("Quotes1", record_id, quotation_map, {"trigger": {"workflow"}});
+                info "Quote Update Response: " + update_quote;
+            }
+            
+            // Update Deal record with the calculated values
+            deal_map = Map();
+            deal_map.put("System_Total_Federal_Tax_Credit", update_tax_credit);
+            deal_map.put("System_Total_Eligible_SunCheck", suncheck_amount);
+            deal_map.put("System_Total_Cost", system_net_cost);
+            
+            // Update the Deal record
+            update_deal = zoho.crm.updateRecord("Deals", deal_id, deal_map, {"trigger": {"workflow"}});
+            info "Deal Update Response: " + update_deal;
+        }
+    }
+}
