@@ -1,0 +1,34 @@
+###### Update Installer Company Field Lookup on Project Record Creation When Installer is Not Empty ###########
+
+void automation.Admin_Update_On_Create_Installer_Company_Field(Int project_id)
+{
+    // Fetch the project details using the provided project ID from Zoho CRM
+    project_details = zoho.crm.getRecordById("Project", project_id);
+
+    // Retrieve the "Installer" field, which holds the details of the installer assigned to the project
+    installer = project_details.get("Installer");
+
+    // Extract the installer ID from the "Installer" field
+    installer_id = installer.getJSON("id");
+
+    // Fetch the details of the installer using the installer ID
+    installers_details = zoho.crm.getRecordById("Installer", installer_id);
+
+    // Extract the installer company name from the installer's details
+    installers_company = installers_details.get("Installer_Company_Name");
+    info installers_company;  // Log installer company details for debugging
+
+    // Retrieve the installer company's ID
+    installer_company_id = installers_company.getJSON("id");
+    info installer_company_id;  // Log installer company ID for debugging
+
+    // Create a map to update the "Installers_Company" field in the project record with the installer company ID
+    project_map = Map();
+    project_map.put("Installers_Company", installer_company_id);
+
+    info project_map;  // Log the map data before performing the update
+
+    // Update the project record with the installer company ID
+    update_project = zoho.crm.updateRecord("Project", project_id, project_map);
+    info update_project;  // Log the response from the update operation
+}
