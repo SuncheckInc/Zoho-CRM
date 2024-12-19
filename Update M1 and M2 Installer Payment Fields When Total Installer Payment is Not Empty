@@ -1,0 +1,50 @@
+############## When the "Total Installer Payment" field is not empty, 
+we update the "M1 Installer Payment" and "M2 Installer Payment" fields accordingly #################
+
+void automation.Admin_For_Update_M1_And_M2_Installer_Payment(Int project_id)
+{
+    // Fetch the project details using the provided project ID from Zoho CRM
+    project_details = zoho.crm.getRecordById("Project", project_id);
+    
+    // Extract the total installer payment from the project details
+    total_installer_payment = ifnull(project_details.getJSON("Total_Installer_Payment"), 0);
+    
+    // Extract the installer details associated with the project
+    installer = project_details.get("Installer");
+    info installer;  // Log installer details for debugging
+
+    // Check if an installer is assigned to the project
+    if(installer != null)
+    {
+        // Fetch the installer ID from the installer record and retrieve its detailed information
+        installer_id = installer.getJSON("id");
+        info installer_id;  // Log installer ID for debugging
+        
+        installer_details = zoho.crm.getRecordById("Installer", installer_id);  // Retrieve detailed installer record
+        
+        // Extract M1 and M2 payment details from the installer record
+        m1_payment = ifnull(installer_details.getJSON("M1_Payment"), 0);  // M1 payment percentage (default to 0 if null)
+        info m1_payment;  // Log M1 payment for debugging
+        
+        m2_payment = ifnull(installer_details.getJSON("M2_Payment"), 0);  // M2 payment percentage (default to 0 if null)
+        info m2_payment;  // Log M2 payment for debugging
+    }
+
+    // Calculate the M1 and M2 payments as percentages of the total installer payment
+    formula_m1 = (m1_payment * total_installer_payment) / 100;  // Formula for calculating M1 payment
+    // info "Formula M1: " + formula_m1;  // Log the calculated M1 payment for debugging
+    
+    formula_m2 = (m2_payment * total_installer_payment) / 100;  // Formula for calculating M2 payment
+    // info "Formula M2: " + formula_m2;  // Log the calculated M2 payment for debugging
+    
+    // Prepare the map to update the M1 and M2 installer payments in the project record
+    project_map = Map();
+    project_map.put("M1_Installer_Payment", formula_m1);  // Map M1 payment to the respective field
+    project_map.put("M2_Installer_Payment", formula_m2);  // Map M2 payment to the respective field
+    
+    info project_map;  // Log the update data before applying the update
+    
+    // Update the project record in Zoho CRM with the calculated M1 and M2 payments
+    update_project = zoho.crm.updateRecord("Project", project_id, project_map, {"trigger": {"workflow"}});
+    info update_project;  // Log the response from the update operation
+}
