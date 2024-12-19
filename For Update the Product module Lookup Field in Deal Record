@@ -1,0 +1,46 @@
+#### When the "Total No. of Modules" is modified to any value, the "Product Module Lookup" in the deal record should be updated accordingly
+
+void automation.Admin_For_Update_Product_Lookup(Int deal_id)
+{
+    // Fetch the deal record from Zoho CRM using the provided deal ID
+    deal_details = zoho.crm.getRecordById("Deals", deal_id);
+    
+    // Get the total number of modules from the deal record
+    total_no_of_modules = deal_details.get("Total_No_Of_Modules");
+    
+    // Fetch related records from the Arrays module related to this deal
+    related_array = zoho.crm.getRelatedRecords("Arrays", "Deals", deal_id);
+    
+    // Log the size of the related array for debugging
+    info related_array.size();
+    
+    // Initialize a map to store deal type updates
+    deal_type_map = Map();
+    
+    // If the total number of modules is greater than 0 and related records exist
+    if (total_no_of_modules > 0 && related_array.size() > 0)
+    {
+        // Update the Product field with a specific product ID and trigger workflow
+        deal_type_map.put("Product", "6288360000000514171");
+        deal_update = zoho.crm.updateRecord("Deals", deal_id, deal_type_map, {"trigger": {"workflow"}});
+        info deal_update; // Log the response of the update
+    }
+    
+    // If only the total number of modules is greater than 0
+    if (total_no_of_modules > 0)
+    {
+        // Update the Product field with the same product ID and trigger workflow again
+        deal_type_map.put("Product", "6288360000000514171");
+        deal_update = zoho.crm.updateRecord("Deals", deal_id, deal_type_map, {"trigger": {"workflow"}});
+        info deal_update; // Log the response of the update
+    }
+    
+    // If the total number of modules is 0 or null
+    if (total_no_of_modules == 0 || total_no_of_modules == null)
+    {
+        // Update the Product field with a different product ID (no workflow trigger)
+        deal_type_map.put("Product", "6288360000008669001");
+        deal_update = zoho.crm.updateRecord("Deals", deal_id, deal_type_map, {});
+    }
+}
+
