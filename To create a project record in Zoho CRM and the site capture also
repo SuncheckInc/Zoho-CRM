@@ -1,0 +1,198 @@
+##### When the "Customer Complete Agreement Timestamp" is not empty, a project record should be created in Zoho CRM, and the site capture project should be create
+
+void automation.Admin_Create_Project_In_CRM_Site_Capture(Int deal_id)
+{
+    // Create a project record in Site Capture using their API
+    url = "https://api.sitecapture.com/customer_api/1_0/project";
+    param_map = Map();
+    param_map.put("template_key","training");  // Set project template as 'training'
+    base64authcode = zoho.encryption.base64Encode("SAZTech:saztechsupport1!");  // Basic auth header
+    header_map = Map();
+    header_map.put("Authorization","Basic " + base64authcode);  // Authorization header
+    header_map.put("API_KEY","MR673Z21GSHF");  // API Key for authentication
+    response = invokeurl
+    [
+        url :url
+        type :POST
+        parameters:param_map.toString()  // Send parameters as string
+        headers:header_map  // Set headers for the request
+    ];
+    info response;  // Log the response from Site Capture
+    site_capture_id = response.getJSON("id");  // Extract project ID from the response
+    info site_capture_id;  // Log the Site Capture project ID
+
+    // Fetch deal details from Zoho CRM using deal ID
+    deal_details = zoho.crm.getRecordById("Deals", deal_id);
+    deal_name = deal_details.get("Deal_Name");
+    state = ifnull(deal_details.get("State_Project"),"");
+    city = ifnull(deal_details.get("City_Project"),"");
+    street = ifnull(deal_details.get("Street_Project"),"");
+    zipcode = ifnull(deal_details.get("Zip_Code_Project"),"");
+    full_address = street + ", " + city + ", " + state + ", " + zipcode;
+    phone_number = ifnull(deal_details.get("Phone_Number"),"");
+    customer_email = ifnull(deal_details.get("Customer_Email"),"");
+    aerialytic_address_id = ifnull(deal_details.get("Aerialytic_Address_Id"),"");
+    customer_first_name = ifnull(deal_details.getJSON("Customer_First_Name"),"");
+    customer_last_name = ifnull(deal_details.getJSON("Customer_Last_Name"),"");
+    customer_name = customer_first_name + " " + customer_last_name;
+    
+    // Fetch other deal-related information
+    total_no_of_modules = ifnull(deal_details.get("Total_No_Of_Modules"), 0);
+    plan_a_battery_configuration = ifnull(deal_details.get("Plan_A_Battery_Configuration"),"");
+    plan_b_battery_configuration = ifnull(deal_details.get("Plan_B_Battery_Configuration"),"");
+    plan_a_equipment_location = ifnull(deal_details.get("Plan_A_Equipment_Location"),"");
+    plan_b_equipment_location = ifnull(deal_details.get("Plan_B_Equipment_Location"),"");
+    equipment_location_view = ifnull(deal_details.get("Equipment_Location_View"),"");
+    additional_product = ifnull(deal_details.get("Additional_Product"),"");
+    existing_generation_assets = ifnull(deal_details.get("Existing_Generation_Assets"),"");
+    product = ifnull(deal_details.get("Product").getJSON("name"),"");
+    system_total_cost = ifnull(deal_details.get("System_Total_Cost"), 0);
+    federal_tax_credit = ifnull(deal_details.get("System_Total_Federal_Tax_Credit"), 0);
+    eligible_suncheck = ifnull(deal_details.get("System_Total_Eligible_SunCheck"), 0);
+    customer_open_agreement_timestamp = ifnull(deal_details.get("Customer_Open_Agreement_Timestamp"),"");
+    customer_complete_agreement_timestamp = ifnull(deal_details.get("Customer_Complete_Agreement_Timestamp"),"");
+    site_capture_ordered_timestamp = ifnull(deal_details.get("Site_Capture_Ordered_Timestamp"),"");
+    system_size = ifnull(deal_details.getJSON("System_Size"), 0);
+    
+    // If Aerialytic Address ID exists, fetch geolocation details via GraphQL
+    if(aerialytic_address_id != null || aerialytic_address_id != "")
+    {
+        graphQL = Map();
+        graphQL.put("query", "query getAddress($addressID: ID!) { addressNode: node(id: $addressID) { ... on Address { id coordinates { latitude longitude } countryCode district districtCode formattedArea formatted } } }");
+        variables = Map();
+        variables.put("addressID", aerialytic_address_id);
+        graphQL.put("variables", variables);
+        headers = Map();
+        headers.put("Authorization", "Api-Key 9l9zYqOp.v3SMUIKPSgTgPRfv7h3bls47kHBsFsbA");  // Authorization for GraphQL request
+        graphQL.put("headers", headers);
+        graphql_url = "https://platform.aisolar.design/graphql";
+        graphql_response = invokeurl
+        [
+            url :graphql_url
+            type :POST
+            parameters: graphQL.toString()  // Send the GraphQL query
+        ];
+        info "Response: " + graphql_response;  // Log the GraphQL response
+        
+        // Extract and store geolocation data if available
+        project_map = Map();
+        if(graphql_response.containsKey("data") && graphql_response.get("data").containsKey("addressNode"))
+        {
+            addressData = graphql_response.get("data");
+            addressNode = ifnull(addressData.get("addressNode"),"");
+            coordinates = ifnull(addressNode.get("coordinates"),"");
+            if(coordinates != null && coordinates != "")
+            {
+                latitude = coordinates.getJSON("latitude");
+                longitude = coordinates.getJSON("longitude");
+                if(latitude != "" && latitude != null)
+                {
+                    project_map.put("Latitude", latitude.toString());
+                }
+                if(longitude != "" && longitude != null)
+                {
+                    project_map.put("Longitude", longitude.toString());
+                }
+            }
+            countryCode = addressData.get("countryCode");
+            district = addressData.get("district");
+            districtCode = addressData.get("districtCode");
+            formattedArea = addressData.get("formattedArea");
+            formatted = addressData.get("formatted");
+            coverage = addressData.get("coverage");
+            if(coverage != null && coverage != "")
+            {
+                clientAllowed = coverage.get("clientAllowed");
+                id = coverage.get("id");
+            }
+
+            // Based on the product type, create the respective project (PV or Battery)
+            if(product == "PV") // For PV projects
+            {
+                project_map.put("ClientAllowed", clientAllowed);
+                project_map.put("Coverage_ID", id);
+                project_map.put("CountryCode", countryCode);
+                project_map.put("District", district);
+                project_map.put("DistrictCode", districtCode);
+                project_map.put("FormattedArea", formattedArea);
+                project_map.put("Formatted", formatted);
+                project_map.put("Homeowner_Name", customer_name);
+                project_map.put("Phone_Number", phone_number);
+                project_map.put("Customer_Email", customer_email);
+                project_map.put("State_Project", state);
+                project_map.put("City_Project", city);
+                project_map.put("Address1", street);
+                project_map.put("Zip_Code_Project", zipcode);
+                project_map.put("Deal", deal_id);
+                project_map.put("Name", deal_name);
+                project_map.put("Customer_First_Name", customer_first_name);
+                project_map.put("Customer_Last_Name", customer_last_name);
+                date1 = zoho.currenttime.toString("yyyy-MM-dd");
+                project_map.put("Due_Date", date1);
+                project_map.put("Project_Stage", "Project Stage 0 - Design Package Creation");
+                project_map.put("Site_Capture_Project_ID", site_capture_id);
+                project_map.put("Total_No_Of_Modules", total_no_of_modules);
+                project_map.put("System_Size", system_size);
+                project_map.put("Plan_A_Battery_Configuration", plan_a_battery_configuration);
+                project_map.put("Plan_B_Battery_Configuration", plan_b_battery_configuration);
+                project_map.put("Plan_A_Equipment_Location", plan_a_equipment_location);
+                project_map.put("Plan_B_Equipment_Location", plan_b_equipment_location);
+                project_map.put("Equipment_Location_View", equipment_location_view);
+                project_map.put("Additional_Product", additional_product);
+                project_map.put("Existing_Generation_Assets", existing_generation_assets);
+                project_map.put("Layout", "6288360000001200001");  // Layout ID for PV
+                project_map.put("Project_Type", "PV");  // Project type: PV
+                create_project = zoho.crm.createRecord("Project", project_map, {"trigger": {"workflow"}});  // Create project in CRM
+                info create_project;  // Log project creation response
+            }
+
+            if(product == "Battery") // For Battery Retrofit projects
+            {
+                battery_project_map = Map();
+                battery_project_map.put("ClientAllowed", clientAllowed);
+                battery_project_map.put("Coverage_ID", id);
+                battery_project_map.put("CountryCode", countryCode);
+                battery_project_map.put("District", district);
+                battery_project_map.put("DistrictCode", districtCode);
+                battery_project_map.put("FormattedArea", formattedArea);
+                battery_project_map.put("Formatted", formatted);
+                battery_project_map.put("Homeowner_Name", customer_name);
+                if(latitude != "" && latitude != null)
+                {
+                    battery_project_map.put("Latitude", latitude.toString());
+                }
+                if(longitude != "" && longitude != null)
+                {
+                    battery_project_map.put("Longitude", longitude.toString());
+                }
+                battery_project_map.put("Phone_Number", phone_number);
+                battery_project_map.put("Customer_Email", customer_email);
+                battery_project_map.put("State_Project", state);
+                battery_project_map.put("City_Project", city);
+                battery_project_map.put("Address1", street);
+                battery_project_map.put("Zip_Code_Project", zipcode);
+                battery_project_map.put("Deal", deal_id);
+                battery_project_map.put("Name", deal_name);
+                battery_project_map.put("System_Size", system_size);
+                battery_project_map.put("Customer_First_Name", customer_first_name);
+                battery_project_map.put("Customer_Last_Name", customer_last_name);
+                date1 = zoho.currenttime.toString("yyyy-MM-dd");
+                battery_project_map.put("Due_Date", date1);
+                battery_project_map.put("Project_Stage", "Project Stage 0 - Design Package Creation");
+                battery_project_map.put("Site_Capture_Project_ID", site_capture_id);
+                battery_project_map.put("Existing_Generation_Assets", existing_generation_assets);
+                battery_project_map.put("System_Total_Cost", system_total_cost);
+                battery_project_map.put("System_Total_Federal_Tax_Credit", federal_tax_credit);
+                battery_project_map.put("System_Total_Eligible_SunCheck", eligible_suncheck);
+                battery_project_map.put("Customer_Open_Agreement_Timestamp", customer_open_agreement_timestamp);
+                battery_project_map.put("Customer_Complete_Agreement_Timestamp", customer_complete_agreement_timestamp);
+                battery_project_map.put("SiteCapture_Ordered_Timestamp", site_capture_ordered_timestamp);
+                battery_project_map.put("Layout", "6288360000008285447");  // Layout ID for Battery Retrofit
+                battery_project_map.put("Project_Type", "Battery");  // Project type: Battery
+                battery_project_map.put("Full_Project_Address", full_address);  // Full address
+                create_project = zoho.crm.createRecord("Project", battery_project_map, {"trigger": {"workflow"}});  // Create project in CRM
+                info create_project;  // Log project creation response
+            }
+        }
+    }
+}
