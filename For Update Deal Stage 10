@@ -1,0 +1,23 @@
+#### The deal stage should be updated to "Opportunity Stage 10 - DownPayment Collected"
+#### only when all fields in the "Deal Stage 10 - DownPayment Collected" section have available data.
+
+void automation.Admin_Update_Stage_Opportunity_Stage_10_DownPayment_Collected(Int deal_id)
+{
+    // Fetch the deal details using the deal ID
+    deal_details = zoho.crm.getRecordById("Deals", deal_id);
+
+    // Initialize a map for deal updates
+    deal_map = Map();
+
+    // Stage 10 - Check if down payment and W9 soft credit consent details are available
+    down_payment_collect_timestamp = deal_details.get("Down_Payment_Collect_Timestamp");
+    w9_soft_credit_consent = deal_details.get("W9_Collection_Soft_Credit_Consent");
+
+    // If both down payment collection timestamp and W9 soft credit consent are present
+    if (down_payment_collect_timestamp != null && w9_soft_credit_consent != null)
+    {
+        // Update the deal stage to "Opportunity Stage 10 - DownPayment Collected"
+        deal_map.put("Stage", "Opportunity Stage 10 - DownPayment Collected");
+        update_deal = zoho.crm.updateRecord("Deals", deal_id, deal_map);
+    }
+}
