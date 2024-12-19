@@ -1,0 +1,20 @@
+#### The "equipment location view" field should only be updated when the "proposal ID" is not empty.
+
+void automation.Admin_Update_Equipment_Location(Int deal_id)
+{
+    // Fetch deal details by deal ID
+    deal_details = zoho.crm.getRecordById("Deals", deal_id);
+    
+    // Get the Aerialytic Proposal ID (if available)
+    aerialytic_proposal_id = ifnull(deal_details.get("Aerialytic_Proposal_Id"), "");
+    
+    // Prepare the URL for the equipment location image
+    deal_map = Map();
+    deal_map.put("Equipment_Location_View", "https://storage.googleapis.com/images-suncheck-com/" + aerialytic_proposal_id + ".png");
+    
+    // Update the deal record with the new Equipment Location View URL
+    update_deal = zoho.crm.updateRecord("Deals", deal_id, deal_map, {"trigger":{"workflow"}});
+    
+    // Log the result
+    info update_deal;
+}
