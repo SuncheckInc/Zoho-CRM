@@ -1,0 +1,171 @@
+##### The function should only be executed when the Quiz 4 timestamp is not empty. Once the timestamp is populated, 
+##### The function will run and update the deal details using GraphQL, including the creation and updating of arrays.
+
+void automation.suncheck_graphQL(Int deal_id)
+{
+    // Fetch deal details
+    deal_details = zoho.crm.getRecordById("Deals", deal_id);
+    proposal_id = deal_details.get("Aerialytic_Proposal_Id");
+    customer_id = deal_details.get("Aerialytic_Customer_Id");
+    address_id = deal_details.get("Aerialytic_Address_Id");
+    deal_name = deal_details.get("Deal_Name");
+
+    // Set up GraphQL query and variables
+    graphQL = Map();
+    graphQL.put("query", "query getVK($proposalID: ID!, $customerID: ID!, $AddressID: ID!) { ... }");
+    variables = Map();
+    variables.put("proposalID", proposal_id);
+    variables.put("AddressID", address_id);
+    variables.put("customerID", customer_id);
+    graphQL.put("variables", variables);
+
+    // Setup headers for API request
+    headers = Map();
+    headers.put("Authorization", "Api-Key 9l9zYqOp.v3SMUIKPSgTgPRfv7h3bls47kHBsFsbA");
+    graphQL.put("headers", headers);
+
+    // Send GraphQL request
+    url2 = "https://platform.aisolar.design/graphql";
+    res = invokeurl
+    [
+        url : url2
+        type : POST
+        parameters : graphQL.toString()
+    ];
+
+    // Check if response contains data
+    if (res != null && res.containsKey("data"))
+    {
+        proposalData = res.get("data").get("proposalNode");
+        addressData = res.get("data").get("addressNode");
+        customerData = res.get("data").get("customerNode");
+
+        if (proposalData != null && proposalData.containsKey("offset"))
+        {
+            // Extract address-related data
+            address1 = addressData.get("address1");
+            address2 = addressData.get("address2");
+            city = addressData.get("city");
+            district = addressData.get("districtCode");
+            country = addressData.get("country");
+            zip = addressData.get("zip");
+
+            // Extract customer-related data
+            customerId = customerData.get("id");
+            email = customerData.get("email");
+            phoneNumber = customerData.get("phoneNumber");
+            firstName = customerData.get("firstName");
+            lastName = customerData.get("lastName");
+
+            // Extract utility profile information
+            utilityProfile = proposalData.get("utilityProfile");
+            if (utilityProfile != null)
+            {
+                fixedChargeAmount = utilityProfile.getJSON("electricityRate").getJSON("fixedCharges").getJSON("price").getJSON("amount");
+                variableChargeAmount = utilityProfile.getJSON("electricityRate").getJSON("variableCharges").getJSON("unitPrice").getJSON("amount");
+                utilityprovider = utilityProfile.getJSON("provider").getJSON("name");
+                consumptionEdges = utilityProfile.getJSON("electricity").getJSON("consumption").getJSON("edges");
+                if (consumptionEdges != null && consumptionEdges.size() > 0)
+                {
+                    lastEdge = consumptionEdges.get(0);
+                    amount = lastEdge.get("node").get("amount");
+                }
+            }
+
+            paybackPeriod = proposalData.get("paybackPeriod");
+            adders = proposalData.get("adders");
+            adders_list = List();
+
+            // Process adders
+            for each adder in adders
+            {
+                adder_name = adder.get("name");
+                if (adder_name != null)
+                {
+                    adders_list.add(adder_name);
+                }
+            }
+
+            // Solar panel design data
+            solarDesign = proposalData.get("solarDesign");
+            sumofproduction = 0;
+            if (solarDesign != null)
+            {
+                shadingReport = solarDesign.getJSON("shadingReport");
+                if (shadingReport != null)
+                {
+                    analysis = shadingReport.getJSON("analysis");
+                    if (analysis != null)
+                    {
+                        production = analysis.getJSON("production");
+                        for each productionValue in production
+                        {
+                            sumofproduction = sumofproduction + productionValue.toNumber();
+                        }
+                    }
+                }
+                solarPanelArrays = solarDesign.get("solarPanelArrays");
+                totalPanelsSize = 0;
+                if (solarPanelArrays != null)
+                {
+                    for each array in solarPanelArrays
+                    {
+                        panels = array.get("panels");
+                        if (panels != null)
+                        {
+                            totalPanelsSize = totalPanelsSize + panels.size();
+                            for each panel in panels
+                            {
+                                array_map = Map();
+                                panel_id = panel.get("id");
+                                azimuth = panel.get("azimuth");
+                                array_map.put("Array_ID", panel_id);
+                                array_map.put("Azimuth", azimuth);
+                                array_map.put("Project", deal_id);
+                                create_array_record = zoho.crm.createRecord("Arrays", array_map);
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Quote and incentive data
+            quoteprice = proposalData.get("quote").get("totalPrice").get("amount");
+            incentives = proposalData.get("incentives");
+            totalIncentivesAmount = 0;
+            for each record in incentives
+            {
+                incentives_amount = record.get("price").get("amount");
+                totalIncentivesAmount = totalIncentivesAmount + incentives_amount;
+            }
+
+            // Prepare and update deal data
+            deal_map = Map();
+            deal_map.put("State_Project", district);
+            deal_map.put("Street_Project", address1);
+            deal_map.put("City_Project", city);
+            deal_map.put("Zip_Code_Project", zip);
+            deal_map.put("Customer_Email", email);
+            deal_map.put("Phone_Number", phoneNumber);
+            deal_map.put("Utility_Rate", variableChargeAmount);
+            deal_map.put("Fixed_Utility_Rate", fixedChargeAmount);
+            deal_map.put("Annual_Consumption_KWhs", amount);
+            deal_map.put("System_Year_1_Production", sumofproduction);
+            deal_map.put("Total_No_Of_Modules", totalPanelsSize);
+            update_deal_record = zoho.crm.updateRecord("Deals", deal_id, deal_map, {"trigger": {"workflow"}});
+        }
+    }
+
+    // Check if all Array records are updated
+    search_array_record = zoho.crm.searchRecords("Arrays", "(Project:equals:" + deal_id + ")");
+    if (totalPanelsSize == search_array_record.size())
+    {
+        for each array in search_array_record
+        {
+            array_id = array.get("id");
+            array_map = Map();
+            array_map.put("Array_X_Number_of_Modules", search_array_record.size());
+            update_array = zoho.crm.updateRecord("Arrays", array_id, array_map);
+        }
+    }
+}
