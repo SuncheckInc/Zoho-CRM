@@ -1,0 +1,85 @@
+###### Fetch Data from Project Module Attachments and Update Site Capture Report File in Deal Module
+void automation.Admin_Update_File_Upload_In_Deal(Int project_id)
+{
+    // Fetch project details from Zoho CRM
+    project_details = zoho.crm.getRecordById("Project", project_id);
+
+    // Get the file name of the site capture report
+    site_capture_file_name = project_details.get("Site_Capture_Report_File_Name");
+
+    // Fetch the associated deal ID from the project details
+    deal_id = project_details.get("Deal").getJSON("id");
+    info deal_id;
+
+    // Fetch related attachments for the project
+    CRMresponse = zoho.crm.getRelatedRecords("Attachments", "Project", project_id);
+    info CRMresponse;
+
+    // Check if there are attachments related to the project
+    if (CRMresponse.size() > 0)
+    {
+        // Get the ID of the first attachment
+        attachment_id = CRMresponse.getJSON("id");
+        info attachment_id;
+
+        // Generate an access token for Zoho API authentication
+        access_token_map = Map();
+        access_token_map.put("refresh_token", "1000.87060ab2ee253b05e22c7b43be49b204.a0acc8bb2ab261d11e0f63159a6a77e0");
+        access_token_map.put("client_id", "1000.PKNHAACXMFKQF39I5SSV0DENSL2N2Y");
+        access_token_map.put("client_secret", "3083c7671ca9e3d420d14af1c3a2704307446335b5");
+        access_token_map.put("redirect_uri", "https://www.google.com/");
+        access_token_map.put("grant_type", "refresh_token");
+
+        // Invoke the Zoho API to get the access token
+        access_tokens = invokeurl
+        [
+            url: "https://accounts.zoho.com/oauth/v2/token?"
+            type: POST
+            parameters: access_token_map
+        ];
+        info access_tokens;
+
+        // Prepare the header with the access token
+        header = Map();
+        header.put("Authorization", "Zoho-oauthtoken " + access_tokens);
+
+        // Fetch the attachment file from Zoho CRM
+        response = invokeurl
+        [
+            url: "https://www.zohoapis.com/crm/v3/Project/" + project_id + "/Attachments/" + attachment_id
+            type: GET
+            connection: "crm"
+        ];
+        info response;
+
+        // Set the parameter name for the file
+        response.setParamName("file");
+
+        // Upload the file to Zoho CRM's file module
+        resp = invokeurl
+        [
+            url: "https://www.zohoapis.com/crm/v2/files"
+            type: POST
+            files: response
+            connection: "crm"
+        ];
+        info resp;
+
+        // Get the file ID from the response
+        fileid = resp.get("data").get(0).get("details").get("id");
+        info fileid;
+
+        // Prepare the mapping to associate the file with the deal
+        fmp = Map();
+        fmp.put("file_id", fileid);
+        fileList = List();
+        fileList.add(fmp);
+
+        // Update the deal with the associated file
+        mp = Map();
+        mp.put("Site_Capture_Report_FIle", fileList);
+        info mp;
+        update = zoho.crm.updateRecord("Deals", deal_id, mp);
+        info update;
+    }
+}
