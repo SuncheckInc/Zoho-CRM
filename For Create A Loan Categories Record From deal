@@ -1,0 +1,62 @@
+////////////// This workflow is triggered when the "Categories" field in a deal record is modified from empty to a value. It then creates a corresponding Category record within the Loan Categories. /////////////////////////////
+///////////////////// Fetching the deal data //////////////////////////////////
+void automation.Admin_Create_Categories_From_GoodLeap(Int deal_id)
+{
+    // Define the API endpoint URL
+    url = "https://sandbox01-api.goodleap.com/posfinancing/rest/v2/categories";
+    
+    // API credentials
+    api_key_id = "7b6e3bf1-cb15-4d23-a729-21ef930ec088";
+    api_key_secret = "c1fc51eeebd9b8f51ad5297ec23266ae61298b8938501bc7ac7a3bba769ad40f";
+    
+    // Encode API credentials in Base64 for authentication
+    encoded_auth = zoho.encryption.base64Encode(api_key_id + ":" + api_key_secret);
+    
+    // Create a map for request headers
+    headers_map = Map();
+    headers_map.put("cache-control","no-cache"); // Disable caching
+    headers_map.put("authorization","Basic " + encoded_auth); // Add authorization header
+    headers_map.put("content-type","application/json"); // Specify content type as JSON
+    
+    // Make a GET request to fetch category data
+    response = invokeurl
+    [
+        url :url
+        type :GET
+        headers:headers_map
+    ];
+    
+    // Log the API response
+    info response;
+    
+    // Loop through each record in the response
+    for each record in response
+    {
+        // Extract relevant fields from the response
+        id = record.get("id");
+        name = record.get("name");
+        minLoanAmount = record.get("minLoanAmount");
+        maxLoanAmount = record.get("maxLoanAmount");
+        minSystemSize = record.get("minSystemSize");
+        maxSystemSize = record.get("maxSystemSize");
+        
+        // Create a map to store category details
+        categories_map = Map();
+        categories_map.put("ID", id);
+        categories_map.put("Name", name);
+        categories_map.put("Min_Loan_Amount", minLoanAmount);
+        categories_map.put("Max_Loan_Amount", maxLoanAmount);
+        categories_map.put("Min_System_Size", minSystemSize);
+        categories_map.put("Max_System_Size", maxSystemSize);
+        categories_map.put("Categories_Id", id);
+        
+        // Log the category map
+        info categories_map;
+        
+        // Create a new record in Zoho CRM for Loan Categories
+        create_record = zoho.crm.createRecord("Loan_Categories", categories_map, {"trigger":{"workflow"}});
+        
+        // Log the response from the CRM record creation
+        info create_record;
+    }
+}
