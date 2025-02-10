@@ -1,0 +1,72 @@
+//////////////////// When a Loan Categories record is created in the Loan Categories module, a corresponding Loan Promotions record will be created against it. ////////
+void automation.Admin_Create_LoanPromotions(Int category_id)
+{
+    // Fetch the category details from Zoho CRM using the given category_id
+    categories_details = zoho.crm.getRecordById("Loan_Categories", category_id);
+    
+    // Extract the external category ID
+    id = categories_details.get("Categories_Id");
+
+    // Define the API endpoint URL for fetching loan promotions
+    url = "https://sandbox01-api.goodleap.com/posfinancing/rest/v2/promotions";
+    
+    // API credentials for authentication
+    api_key_id = "7b6e3bf1-cb15-4d23-a729-21ef930ec088";
+    api_key_secret = "c1fc51eeebd9b8f51ad5297ec23266ae61298b8938501bc7ac7a3bba769ad40f";
+    
+    // Encode the API credentials using Base64 encoding
+    encoded_auth = zoho.encryption.base64Encode(api_key_id + ":" + api_key_secret);
+    
+    // Create a map for request headers
+    headers_map = Map();
+    headers_map.put("cache-control","no-cache"); // Disable caching
+    headers_map.put("authorization","Basic " + encoded_auth); // Add authorization header
+    headers_map.put("content-type","application/json"); // Specify JSON content type
+    headers_map.put("categoryId", id); // Pass the category ID as a header parameter
+
+    // Send a GET request to fetch loan promotions data
+    response = invokeurl
+    [
+        url :url
+        type :GET
+        headers:headers_map
+    ];
+
+    // Log the API response for debugging
+    info response;
+
+    // Check if the response contains "data" key
+    if(response.containsKey("data"))
+    {
+        // Extract the list of promotions
+        data_list = response.get("data");
+
+        // Iterate through each promotion record
+        for each promotion in data_list
+        {
+            // Extract relevant promotion details
+            promotion_id = promotion.get("id");
+            promotion_name = promotion.get("name");
+            description = promotion.get("description");
+
+            // Extract meta cursor if available, otherwise set to null
+            meta_cursor = if(promotion.get("meta").containsKey("cursor"), promotion.get("meta").get("cursor"), null);
+
+            // Create a map to store promotion details
+            promotions_map = Map();
+            promotions_map.put("External_Id", promotion_id); // Store external promotion ID
+            promotions_map.put("Name", promotion_name); // Store promotion name
+            promotions_map.put("Description", description); // Store promotion description
+            promotions_map.put("Loan_Categories", category_id); // Link to loan category
+
+            // Log the promotions_map for debugging
+            // info promotions_map;
+
+            // Create a new record in Zoho CRM for Loan Promotions
+            create_record = zoho.crm.createRecord("Loan_Promotions", promotions_map, {"trigger":{"workflow"}});
+
+            // Log the response from the CRM record creation
+            info create_record;
+        }
+    }
+}
