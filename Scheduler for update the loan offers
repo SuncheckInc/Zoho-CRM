@@ -1,0 +1,106 @@
+
+/////////// To update the Loan Offers against the Loan Categories, the process will be triggered every night to update the latest values.////////////////////////////////
+
+void schedule.Admin_For_Loan_Offers(Date cvid)
+{
+    b = 200; // Batch size
+    page_numbers = {1,2,3,4,5}; // Loop through multiple pages
+    
+    for each page_no in page_numbers
+    {
+        // Fetch Loan Offers from Zoho CRM
+        loan_offers = zoho.crm.getRecords("Loan_Offers", page_no, b, {"cvid": 6288360000012882088});
+        
+        // Iterate through each Loan Offer record
+        for each loan_offer in loan_offers
+        {
+            loan_id = loan_offer.get("id");
+            info "Processing Loan Offer ID: " + loan_id;
+
+            // Get external ID (Offer ID)
+            external_id = loan_offer.get("Offer Id");
+            if (external_id == null || external_id == "")
+            {
+                info "Skipping Loan Offer ID: " + loan_id + " due to missing External ID";
+                continue;
+            }
+
+            // API details
+            url = "https://sandbox01-api.goodleap.com/posfinancing/rest/v2/offers?categoryId=" + external_id;
+            api_key_id = "7b6e3bf1-cb15-4d23-a729-21ef930ec088";
+            api_key_secret = "c1fc51eeebd9b8f51ad5297ec23266ae61298b8938501bc7ac7a3bba769ad40f";
+            encoded_auth = zoho.encryption.base64Encode(api_key_id + ":" + api_key_secret);
+
+            // API headers
+            headers_map = Map();
+            headers_map.put("cache-control", "no-cache");
+            headers_map.put("authorization", "Basic " + encoded_auth);
+            headers_map.put("content-type", "application/json");
+
+            // Fetch promotions via API
+            response = invokeurl
+            [
+                url : url
+                type : GET
+                headers: headers_map
+            ];
+
+            // Validate API response
+            if (response != null && response.containsKey("data"))
+            {
+                data_list = response.get("data");
+                info "Total offers received: " + data_list.size();
+
+                // Process each loan offer from API response
+                for each offer in data_list
+                {
+                    info "Updating offer: " + offer.get("offerId");
+                    
+                    // Construct loan offer map
+                    loan_offer_map = Map();
+                    loan_offer_map.put("Offer_Id", ifnull(offer.get("offerId"), ""));
+                    loan_offer_map.put("Name", ifnull(offer.get("name"), ""));
+                    loan_offer_map.put("Rate", ifnull(offer.get("rate"), ""));
+                    loan_offer_map.put("Term", ifnull(offer.get("term"), ""));
+                    loan_offer_map.put("Category_Id", ifnull(offer.get("categoryId"), ""));
+                    loan_offer_map.put("Product_Id", ifnull(offer.get("productId"), ""));
+                    loan_offer_map.put("Product_Code", ifnull(offer.get("productCode"), ""));
+                    loan_offer_map.put("Dealer_Fee", ifnull(offer.get("dealerFee"), ""));
+                    loan_offer_map.put("Product_Description", ifnull(offer.get("productDescription"), ""));
+                    loan_offer_map.put("Product_Name", ifnull(offer.get("productName"), ""));
+                    loan_offer_map.put("Estimated_First_Payment_Month", ifnull(offer.get("estimatedFirstPaymentMonth"), ""));
+                    loan_offer_map.put("Channels", ifnull(offer.get("channels"), "").toString());
+                    loan_offer_map.put("States", ifnull(offer.get("states"), "").toString());
+                    loan_offer_map.put("Product_Promotion_Type", ifnull(offer.get("productPromotionType"), ""));
+                    loan_offer_map.put("Product_Promotional_Period", ifnull(offer.get("productPromotionalPeriod").toString(), ""));
+                    loan_offer_map.put("Escalator_Rate", ifnull(offer.get("escalatorRate"), ""));
+
+                    // Handle Minimum Production Rate
+                    minimum_production_rate = offer.get("minimumProductionRate");
+                    loan_offer_map.put("Minimum_Production_Rate", if (minimum_production_rate != null && minimum_production_rate.get("value") != null) ? minimum_production_rate.get("value") : "");
+
+                    // Handle Maximum Production Rate
+                    maximum_production_rate = offer.get("maximumProductionRate");
+                    loan_offer_map.put("Maximum_Production_Rate", if (maximum_production_rate != null && maximum_production_rate.get("value") != null) ? maximum_production_rate.get("value") : "");
+
+                    // Additional attributes
+                    loan_offer_map.put("Rate_Maximum", ifnull(offer.get("rateMaximum"), ""));
+                    loan_offer_map.put("Project_Type_Code", ifnull(offer.get("projectTypeCode"), ""));
+                    loan_offer_map.put("Project_Type_Name", ifnull(offer.get("projectTypeName"), ""));
+                    loan_offer_map.put("Utility_Company_Code", ifnull(offer.get("utilityCompanyCode"), ""));
+                    loan_offer_map.put("Utility_Company_Name", ifnull(offer.get("utilityCompanyName"), ""));
+                    loan_offer_map.put("Utility_Company_External_ID", ifnull(offer.get("utilityCompanyExternalId"), ""));
+                    loan_offer_map.put("Loan_Categories", external_id);
+
+                    // Update Loan Offer record in CRM
+                    update_response = zoho.crm.updateRecord("Loan_Offers", loan_id, loan_offer_map);
+                    info "Update Response: " + update_response;
+                }
+            }
+            else
+            {
+                info "No offers found for Loan Offer ID: " + loan_id;
+            }
+        }
+    }
+}
