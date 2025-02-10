@@ -1,0 +1,110 @@
+//////////////// When a record is created in Loan Promotions, a corresponding Loan Offers record will be created against each Loan Promotions record. //////////////////////////////////////////
+void automation.Admin_Create_LoanOffers_From_GoodLeap(Int promotion_id)
+{
+    // Fetch the promotion details from Zoho CRM using the given promotion_id
+    promotions_details = zoho.crm.getRecordById("Loan_Promotions", promotion_id);
+    
+    // Extract the associated loan category ID
+    loan_categories_id = promotions_details.get("Loan_Categories").getJSON("id");
+
+    // Define the API endpoint URL for fetching loan offers
+    url = "https://sandbox01-api.goodleap.com/posfinancing/rest/v2/offers";
+    
+    // API credentials for authentication
+    api_key_id = "7b6e3bf1-cb15-4d23-a729-21ef930ec088";
+    api_key_secret = "c1fc51eeebd9b8f51ad5297ec23266ae61298b8938501bc7ac7a3bba769ad40f";
+    
+    // Encode the API credentials using Base64 encoding
+    encoded_auth = zoho.encryption.base64Encode(api_key_id + ":" + api_key_secret);
+    
+    // Create a map for request headers
+    headers_map = Map();
+    headers_map.put("cache-control","no-cache"); // Disable caching
+    headers_map.put("authorization","Basic " + encoded_auth); // Add authorization header
+    headers_map.put("content-type","application/json"); // Specify JSON content type
+
+    // Send a GET request to fetch loan offers data
+    response = invokeurl
+    [
+        url :url
+        type :GET
+        headers:headers_map
+    ];
+
+    // Check if the response contains data
+    if(response.get("data") != null)
+    {
+        // Extract the list of offers
+        data_list = response.get("data");
+        info "Total offers in data_list: " + data_list.size();
+
+        // Iterate through each offer record
+        for each offer in data_list
+        {
+            info "Processing offer: " + offer;
+            
+            // Create a map to store loan offer details
+            loan_offer_map = Map();
+            loan_offer_map.put("Offer_Id", ifnull(offer.getJSON("offerId"), ""));
+            loan_offer_map.put("Name", ifnull(offer.getJSON("name"), ""));
+            loan_offer_map.put("Rate", ifnull(offer.getJSON("rate"), ""));
+            loan_offer_map.put("Term", ifnull(offer.getJSON("term"), ""));
+            loan_offer_map.put("Category_Id", ifnull(offer.getJSON("categoryId"), ""));
+            loan_offer_map.put("Product_Id", ifnull(offer.getJSON("productId"), ""));
+            loan_offer_map.put("Product_Code", ifnull(offer.getJSON("productCode"), ""));
+            loan_offer_map.put("Dealer_Fee", ifnull(offer.getJSON("dealerFee"), ""));
+            loan_offer_map.put("Product_Description", ifnull(offer.getJSON("productDescription"), ""));
+            loan_offer_map.put("Product_Name", ifnull(offer.getJSON("productName"), ""));
+            loan_offer_map.put("Estimated_First_Payment_Month", ifnull(offer.getJSON("estimatedFirstPaymentMonth"), ""));
+            loan_offer_map.put("Channels", ifnull(offer.getJSON("channels"), "").toString());
+            loan_offer_map.put("States", ifnull(offer.getJSON("states"), "").toString());
+            loan_offer_map.put("Product_Promotion_Type", ifnull(offer.getJSON("productPromotionType"), ""));
+            loan_offer_map.put("Product_Promotional_Period", ifnull(offer.getJSON("productPromotionalPeriod").toString(), ""));
+            loan_offer_map.put("Escalator_Rate", ifnull(offer.getJSON("escalatorRate"), ""));
+
+            // Extract minimum production rate if available, otherwise set to empty string
+            minimum_production_rate = offer.get("minimumProductionRate");
+            if(minimum_production_rate != null && minimum_production_rate.get("value") != null)
+            {
+                minimum_production_rate_value = minimum_production_rate.get("value");
+            }
+            else
+            {
+                minimum_production_rate_value = "";
+            }
+
+            // Extract maximum production rate if available, otherwise set to empty string
+            maximum_production_rate = offer.get("maximumProductionRate");
+            if(maximum_production_rate != null && maximum_production_rate.get("value") != null)
+            {
+                maximum_production_rate_value = maximum_production_rate.get("value");
+            }
+            else
+            {
+                maximum_production_rate_value = "";
+            }
+
+            // Store extracted production rate values
+            loan_offer_map.put("Minimum_Production_Rate", minimum_production_rate_value);
+            loan_offer_map.put("Maximum_Production_Rate", maximum_production_rate_value);
+
+            // Additional offer details
+            loan_offer_map.put("Rate_Maximum", ifnull(offer.getJSON("rateMaximum"), ""));
+            loan_offer_map.put("Project_Type_Code", ifnull(offer.getJSON("projectTypeCode"), ""));
+            loan_offer_map.put("Project_Type_Name", ifnull(offer.getJSON("projectTypeName"), ""));
+            loan_offer_map.put("Utility_Company_Code", ifnull(offer.getJSON("utilityCompanyCode"), ""));
+            loan_offer_map.put("Utility_Company_Name", ifnull(offer.getJSON("utilityCompanyName"), ""));
+            loan_offer_map.put("Utility_Company_External_ID", ifnull(offer.getJSON("utilityCompanyExternalId").toString(), ""));
+            loan_offer_map.put("Loan_Categories", loan_categories_id); // Link to loan category
+
+            // Log the size of the loan offer map for debugging
+            info "Loan offer map size: " + loan_offer_map.size();
+
+            // Create a new record in Zoho CRM for Loan Offers
+            create_response = zoho.crm.createRecord("Loan_Offers", loan_offer_map);
+
+            // Log the response from the CRM record creation
+            info create_response;
+        }
+    }
+}
