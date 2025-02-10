@@ -1,0 +1,75 @@
+//////////////////// To update the Loan Promotions against the Loan Categories, the process will be triggered every night to update the latest values. ///////////////
+
+void schedule.Admin_Update_Loan_Promotions(Date cvid)
+{
+    b = 200; 
+    page_numbers = {1,2,3,4,5}; // Paginate through multiple pages
+
+    for each page_no in page_numbers
+    {
+        // Fetch Loan Promotions from Zoho CRM
+        loan_promotions = zoho.crm.getRecords("Loan_Promotions", page_no, b, {"cvid": 6288360000012880276});
+
+        // Iterate through each Loan Promotion record
+        for each loan_promotion in loan_promotions
+        {
+            crm_promotion_id = loan_promotion.get("id");
+            categories_id = loan_promotion.get("Loan_Categories.id"); // Access directly from API response
+            external_id = loan_promotion.get("Categories_Id");
+
+            info "Processing Loan Promotion ID: " + crm_promotion_id;
+
+            // Skip if external_id is missing
+            if (external_id == null || external_id == "")
+            {
+                info "Skipping Loan Promotion ID: " + crm_promotion_id + " due to missing External ID.";
+                continue;
+            }
+
+            // API details
+            url = "https://sandbox01-api.goodleap.com/posfinancing/rest/v2/promotions?categoryId=" + external_id;
+            api_key_id = "7b6e3bf1-cb15-4d23-a729-21ef930ec088";
+            api_key_secret = "c1fc51eeebd9b8f51ad5297ec23266ae61298b8938501bc7ac7a3bba769ad40f";
+            encoded_auth = zoho.encryption.base64Encode(api_key_id + ":" + api_key_secret);
+
+            // API headers
+            headers_map = Map();
+            headers_map.put("cache-control", "no-cache");
+            headers_map.put("authorization", "Basic " + encoded_auth);
+            headers_map.put("content-type", "application/json");
+
+            // Fetch promotions via API
+            response = invokeurl
+            [
+                url : url
+                type : GET
+                headers: headers_map
+            ];
+
+            // Validate API response
+            if (response != null && response.containsKey("data"))
+            {
+                data_list = response.get("data");
+                info "Total promotions received: " + data_list.size();
+
+                // Process each loan promotion from API response
+                for each promotion in data_list
+                {
+                    external_promotion_id = promotion.get("id");
+                    promotion_name = promotion.get("name");
+                    description = promotion.get("description");
+
+                    promotions_map = Map();
+                    promotions_map.put("External_Id", ifnull(external_promotion_id, ""));
+                    promotions_map.put("Name", ifnull(promotion_name, ""));
+                    promotions_map.put("Description", ifnull(description, ""));
+                    promotions_map.put("Loan_Categories", categories_id);
+
+                    // Update Loan Promotion record in CRM
+                    update_record = zoho.crm.updateRecord("Loan_Promotions", crm_promotion_id, promotions_map);
+                    info "Update Response for " + crm_promotion_id + ": " + update_record;
+                }
+            }
+         }
+    }
+}
