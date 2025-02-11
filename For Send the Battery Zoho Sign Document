@@ -1,0 +1,121 @@
+void automation.Admin_For_The_Battery_Sign_Document(Int deal_ids)
+{
+optional_map = Map();
+deal_details = zoho.crm.getRecordById("Deals",deal_ids);
+Customer_complete_Agreement_Timestamp = deal_details.getJSON("Customer_Complete_Agreement_Timestamp");
+deal_name = ifnull(deal_details.get("Deal_Name"),"");
+email = ifnull(deal_details.get("Customer_Email"),"");
+state_project = ifnull(deal_details.get("State_Project"),"");
+street = ifnull(deal_details.get("Street_Project"),"");
+zipcode = ifnull(deal_details.get("Zip_Code_Project"),"");
+city = ifnull(deal_details.get("City_Project"),"");
+full_address = street + ", " + state_project + ", " + city + ", " + zipcode;
+additional_product = deal_details.getJSON("Additional_Product");
+phone_number = ifnull(deal_details.get("Phone_Number"),"");
+customer_first_name = ifnull(deal_details.get("Customer_First_Name"),"");
+customer_last_name = ifnull(deal_details.get("Customer_Last_Name"),"");
+full_name = customer_first_name + " " + customer_last_name;
+// Validate required fields
+product = deal_details.getJSON("Product");
+// info product;
+product_name = product.getJSON("name");
+// info product_name;
+current_date = zoho.currenttime.toString("dd MMMM yyyy");
+// Get the related quotes from the deal
+related_record = zoho.crm.getRelatedRecords("Quotation","Deals",deal_ids);
+// info related_record;
+if(related_record.size() > 0)
+{
+	for each  rec in related_record
+	{
+		record_id = rec.getJSON("id");
+		// 		info record_id;
+		quotes = zoho.crm.getRecordById("Quotes1",record_id.toLong());
+		total_system_cost = ifnull(quotes.getJSON("Total_System_Cost"),0);
+		pv_dc_system_size_w = ifnull(quotes.getJSON("PV_DC_System_Size_W"),0);
+		suncheck_amount = ifnull(quotes.getJSON("SunCheck_Amount"),0);
+		solar_installation_cost = ifnull(quotes.getJSON("Solar_Installation_Cost"),0);
+		battery_installation_cost = ifnull(quotes.getJSON("Battery_Installation_Cost"),0);
+		total_amount = ifnull(quotes.getJSON("Total_Amount"),0);
+		complete_agreement_timestamp = ifnull(quotes.getJSON("Customer_Complete_Agreement_Timestamp"),"");
+		// Check if agreement timestamp is empty
+		if(complete_agreement_timestamp == null || complete_agreement_timestamp == "")
+		{
+			actionMap = Map();
+			fieldTextData = Map();
+			if(product_name == "Battery")
+			{
+				// 				info "test";
+				fieldTextData.put("Phone Number",phone_number);
+				fieldTextData.put("Battery Installation",battery_installation_cost);
+				fieldTextData.put("Full name",deal_name);
+				fieldTextData.put("Email",email);
+				fieldTextData.put("Total Amount",total_amount);
+				fieldTextData.put("Amount",total_amount);
+				fieldTextData.put("Client Address",full_address);
+				fieldTextData.put("Address",full_address);
+				fieldTextData.put("Size2",pv_dc_system_size_w);
+				fieldTextData.put("Size",pv_dc_system_size_w);
+				fieldTextData.put("State",state_project);
+				fieldTextData.put("Address of Customer",full_address);
+				fieldTextData.put("System Size",pv_dc_system_size_w);
+				fieldTextData.put("Total System Cost",total_system_cost);
+				fieldTextData.put("Name of Customer",full_name);
+				fieldTextData.put("Name",full_name);
+				fieldTextData.put("Dated",current_date);
+				fieldTextData.put("Zip Code",zipcode);
+				fieldTextData.put("City",city);
+				template_id = 398363000000392275;
+				action_id = "398363000000392296";
+				///////////////////////////////////////////////////////////////////////////////12 Dec 2024 ////////////////////////////////////////////////////////////////
+				date_map = Map();
+				date_map.put("Dated",current_date);
+				date_map.put("Date",current_date);
+				fieldDataMap = Map();
+				fieldDataMap.put("field_text_data",fieldTextData);
+				fieldDataMap.put("field_date_data",date_map);
+				actionMap.put("field_data",fieldDataMap);
+				eachActionMap1 = Map();
+				eachActionMap1.put("recipient_name",deal_name);
+				eachActionMap1.put("recipient_email",email);
+				eachActionMap1.put("action_type","SIGN");
+				eachActionMap1.put("role","Customer");
+				eachActionMap1.put("verify_recipient","false");
+				eachActionMap1.put("action_id",action_id);
+				eachActionMap1.put("is_embedded",true);
+				fieldList = List();
+				fieldList.add(eachActionMap1);
+				actionMap.put("actions",fieldList);
+				submitMap = Map();
+				submitMap.put("templates",actionMap);
+				parameters = Map();
+				parameters.put("is_quicksend","true");
+				parameters.put("data",submitMap);
+				// Create the Zoho Sign document
+				sign_document = zoho.sign.createUsingTemplate(template_id,parameters,"zohosign");
+// 												info sign_document;
+				zs_request_id = sign_document.get("requests").get("request_id");
+				zs_action_id = sign_document.get("requests").get("actions").get(0).get("action_id");
+				zs_document_id = sign_document.get("requests").get("document_ids").get(0).get("document_id");
+				// 	info "zs_document_id == " + zs_document_id;
+				url2 = "https://sign.zoho.com/api/v1/requests/" + zs_request_id + "/actions/" + zs_action_id + "/embedtoken?host=https://crm.zoho.com/";
+				embedded_url = invokeurl
+				[
+					url :url2
+					type :POST
+					connection:"zohosign"
+				];
+				sign_url = embedded_url.get("sign_url");
+				info sign_url;
+				openUrl(sign_url,"same window");
+				// Update the deal record with the sign URL
+				deal_map = Map();
+				deal_map.put("Zoho_Sign_URL",sign_url);
+				deal_map.put("Request_Id",zs_request_id);
+				deal_map.put("Document_Id",zs_document_id);
+				update_deal = zoho.crm.updateRecord("Deals",deal_ids,deal_map,{"trigger":{"workflow"}});
+			}
+		}
+	}
+}
+}
